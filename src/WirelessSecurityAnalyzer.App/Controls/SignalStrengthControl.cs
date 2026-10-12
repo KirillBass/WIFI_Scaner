@@ -17,13 +17,13 @@ public sealed class SignalStrengthControl : Control
     {
         base.Render(context);
         var active = this.FindResource("SignalBrush") as IBrush;
-        var muted = this.FindResource("MutedBrush") as IBrush;
+        var muted = this.FindResource("BorderBrush") as IBrush;
         var textBrush = this.FindResource("TextBrush") as IBrush;
         var bars = RssiDbm >= -45 ? 4 : RssiDbm >= -60 ? 3 : RssiDbm >= -75 ? 2 : RssiDbm >= -90 ? 1 : 0;
         for (var i = 0; i < 4; i++)
             context.DrawRectangle(i < bars ? active : muted, null, new Rect(i * 7, 23 - (i + 1) * 5, 5, (i + 1) * 5), 1, 1);
         var text = new FormattedText($"{RssiDbm} dBm", CultureInfo.GetCultureInfo("ru-RU"),
-            FlowDirection.LeftToRight, new Typeface("Inter, Segoe UI, sans-serif"), 13, textBrush);
+            FlowDirection.LeftToRight, new Typeface("Segoe UI, sans-serif"), 13, textBrush);
         context.DrawText(text, new Point(36, 4));
     }
 }

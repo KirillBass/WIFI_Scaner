@@ -29,6 +29,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private NavigationItem? _selectedNavigation;
     public ViewModelBase CurrentPage => (SelectedNavigation ?? Navigation[1]).Page;
 
+    partial void OnSelectedNavigationChanged(NavigationItem? value)
+    {
+        // Keep the default page selected when the tab strip receives an empty selection.
+        if (value is null) SelectedNavigation = Navigation[1];
+    }
+
     [RelayCommand]
     private Task InitializeAsync() => Task.WhenAll(_accessPoints.InitializeAsync(), _devices.InitializeAsync());
     public void Stop()

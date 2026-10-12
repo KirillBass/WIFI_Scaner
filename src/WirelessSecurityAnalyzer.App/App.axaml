@@ -3,7 +3,7 @@
              xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels"
              xmlns:views="using:WirelessSecurityAnalyzer.App.Views"
              x:Class="WirelessSecurityAnalyzer.App.App"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>

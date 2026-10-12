@@ -3,7 +3,7 @@
              xmlns:plot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
              x:Class="WirelessSecurityAnalyzer.App.Views.ChannelsView" x:DataType="vm:ChannelsViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="14">
+    <StackPanel Spacing="8">
       <StackPanel Spacing="5">
         <TextBlock Text="Каналы" Classes="title" />
         <TextBlock Text="Оценочная загруженность канала · влияние соседних Wi-Fi сетей" Classes="subtitle" />
@@ -11,7 +11,7 @@
       <Grid ColumnDefinitions="160,*,Auto,Auto" ColumnSpacing="10">
         <ComboBox x:Name="ChannelBandSelector" ItemsSource="{Binding Bands}" SelectedIndex="{Binding SelectedBandIndex}" HorizontalAlignment="Stretch" />
         <TextBlock Grid.Column="1" Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap" />
-        <Button Grid.Column="2" x:Name="RefreshButton" Content="Обновить анализ" Command="{Binding RefreshAnalysisCommand}" Classes="primary" />
+        <Button Grid.Column="2" x:Name="RefreshButton" Content="Обновить анализ" Command="{Binding RefreshAnalysisCommand}" />
         <Button Grid.Column="3" Content="Отмена" Command="{Binding RefreshAnalysisCancelCommand}" IsVisible="{Binding IsBusy}" />
       </Grid>
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
@@ -26,7 +26,7 @@
         <TextBlock Text="{Binding BssCount, StringFormat='BSS в диапазоне: {0}'}" Classes="subtitle" Margin="0,0,20,4" />
         <TextBlock Text="{Binding ModelWidthText}" Classes="subtitle" Margin="0,0,0,4" />
       </WrapPanel>
-      <TextBlock Text="Расположение и перекрытие BSS" FontSize="17" FontWeight="SemiBold" />
+      <TextBlock Text="Расположение и перекрытие BSS" Classes="section" />
       <Border Classes="card" Padding="6" Height="300" ClipToBounds="True">
         <Grid>
           <plot:AvaPlot x:Name="ChannelPlot" />
@@ -37,11 +37,11 @@
         </Grid>
       </Border>
       <TextBlock x:Name="CurveDetails" Text="Наведите курсор на кривую, чтобы увидеть SSID, BSSID, канал и RSSI." Classes="subtitle" MinHeight="20" />
-      <Border Classes="card" IsVisible="{Binding HasAnalysis}" Padding="14">
+      <Border Classes="card" IsVisible="{Binding HasAnalysis}">
         <StackPanel Spacing="7">
           <WrapPanel>
-            <TextBlock Text="{Binding RecommendationText}" FontSize="18" FontWeight="SemiBold" Margin="0,0,20,4" />
-            <TextBlock Text="{Binding RecommendedScoreText}" Foreground="{DynamicResource SignalBrush}" FontSize="18" />
+            <TextBlock Text="{Binding RecommendationText}" FontWeight="SemiBold" Margin="0,0,20,4" />
+            <TextBlock Text="{Binding RecommendedScoreText}" />
           </WrapPanel>
           <TextBlock Text="Рекомендация эвристическая. Набор каналов-кандидатов не проверен для вашего региона и адаптера; доступность канала нужно сверить с настройками роутера." Classes="subtitle" FontSize="12" />
         </StackPanel>
@@ -54,23 +54,12 @@
             <TableViewColumn Header="Частота" Binding="{ReflectionBinding Frequency}" Width="110" />
             <TableViewColumn Header="BSS на канале" Binding="{ReflectionBinding DirectBssCount}" Width="130" />
             <TableViewColumn Header="Влияющих BSS" Binding="{ReflectionBinding InfluencingBssCount}" Width="140" />
-            <TableViewColumn Header="Оценка, %" Width="150">
-              <TableViewColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:ChannelRowViewModel">
-                  <StackPanel Spacing="3" Margin="4,3">
-                    <TextBlock Text="{Binding ScoreText}" />
-                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding LoadScorePercent}" Height="4" MinWidth="0" Foreground="{DynamicResource AccentBrush}" />
-                  </StackPanel>
-                </DataTemplate>
-              </TableViewColumn.CellTemplate>
-            </TableViewColumn>
+            <TableViewColumn Header="Оценка, %" Binding="{ReflectionBinding ScoreText}" Width="100" />
             <TableViewColumn Header="Состояние" Binding="{ReflectionBinding LevelText}" Width="110" />
             <TableViewColumn Header="Рекомендация" Width="145">
               <TableViewColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ChannelRowViewModel">
-                  <Border IsVisible="{Binding IsRecommended}" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource SignalBrush}" BorderThickness="1" CornerRadius="4" Padding="7,3" HorizontalAlignment="Left">
-                    <TextBlock Text="Рекомендован" Foreground="{DynamicResource SignalBrush}" FontSize="12" />
-                  </Border>
+                  <TextBlock Text="Рекомендован" IsVisible="{Binding IsRecommended}" />
                 </DataTemplate>
               </TableViewColumn.CellTemplate>
             </TableViewColumn>

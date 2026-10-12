@@ -1,14 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels" xmlns:controls="using:WirelessSecurityAnalyzer.App.Controls"
              x:Class="WirelessSecurityAnalyzer.App.Views.AccessPointsView" x:DataType="vm:AccessPointsViewModel">
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="16">
-    <StackPanel Spacing="7"><TextBlock Text="Эфир" Classes="title" /><TextBlock Text="Доступные точки доступа · Windows Native Wi-Fi" Classes="subtitle" /><TextBlock Text="{Binding AdapterText}" Classes="subtitle" /></StackPanel>
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="8">
+    <StackPanel Spacing="4"><TextBlock Text="Эфир" Classes="title" /><TextBlock Text="Доступные точки доступа" Classes="subtitle" /><TextBlock Text="{Binding AdapterText}" Classes="subtitle" /></StackPanel>
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
       <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap" />
-      <Button Grid.Column="1" Content="Сканировать" Classes="primary" Command="{Binding ScanCommand}" />
+      <Button Grid.Column="1" Content="Сканировать" Command="{Binding ScanCommand}" />
       <Button Grid.Column="2" Content="Отмена" Command="{Binding ScanCancelCommand}" IsVisible="{Binding IsBusy}" />
     </Grid>
-    <Border Grid.Row="2" Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}" Padding="14">
+    <Border Grid.Row="2" Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}">
       <StackPanel Spacing="10"><TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}" />
         <Button Content="Открыть параметры местоположения" Command="{Binding OpenLocationSettingsCommand}" IsVisible="{Binding IsLocationPermissionRequired}" />
       </StackPanel>
@@ -23,35 +23,35 @@
         <TableView ItemsSource="{Binding AccessPoints}" SelectedItem="{Binding SelectedAccessPoint, Mode=TwoWay}"
                    CanUserResizeColumns="True" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.AllowAutoHide="False">
           <TableView.Columns>
-            <TableViewColumn Header="SSID" Binding="{ReflectionBinding Ssid}" Width="200" />
-            <TableViewColumn Header="BSSID" Binding="{ReflectionBinding Bssid}" Width="165" />
-            <TableViewColumn Header="Вендор" Width="190">
+            <TableViewColumn Header="SSID" Binding="{ReflectionBinding Ssid}" Width="145" />
+            <TableViewColumn Header="BSSID" Binding="{ReflectionBinding Bssid}" Width="150" />
+            <TableViewColumn Header="Производитель" Width="140">
               <TableViewColumn.CellTemplate><DataTemplate x:DataType="vm:AccessPointRowViewModel">
                 <TextBlock Text="{Binding Vendor}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Vendor}" />
               </DataTemplate></TableViewColumn.CellTemplate>
             </TableViewColumn>
-            <TableViewColumn Header="RSSI / сигнал" Width="140">
+            <TableViewColumn Header="RSSI / сигнал" Width="130">
               <TableViewColumn.CellTemplate><DataTemplate x:DataType="vm:AccessPointRowViewModel"><controls:SignalStrengthControl RssiDbm="{Binding RssiDbm}" /></DataTemplate></TableViewColumn.CellTemplate>
             </TableViewColumn>
-            <TableViewColumn Header="Канал" Binding="{ReflectionBinding Channel}" Width="65" />
-            <TableViewColumn Header="Диапазон" Binding="{ReflectionBinding Band}" Width="100" />
-            <TableViewColumn Header="Стандарт Wi-Fi" Binding="{ReflectionBinding WifiStandard}" Width="200" />
-            <TableViewColumn Header="Безопасность" Width="195">
+            <TableViewColumn Header="Канал" Binding="{ReflectionBinding Channel}" Width="60" />
+            <TableViewColumn Header="Диапазон" Binding="{ReflectionBinding Band}" Width="90" />
+            <TableViewColumn Header="Стандарт Wi-Fi" Binding="{ReflectionBinding WifiStandard}" Width="150" />
+            <TableViewColumn Header="Безопасность" Width="165">
               <TableViewColumn.CellTemplate><DataTemplate x:DataType="vm:AccessPointRowViewModel">
                 <TextBlock Text="{Binding Security}" ToolTip.Tip="{Binding SecurityDetails}" />
               </DataTemplate></TableViewColumn.CellTemplate>
             </TableViewColumn>
-            <TableViewColumn Header="Частота" Binding="{ReflectionBinding Frequency}" Width="115" />
-            <TableViewColumn Header="Обнаружена" Binding="{ReflectionBinding LastSeen}" Width="145" />
+            <TableViewColumn Header="Частота" Binding="{ReflectionBinding Frequency}" Width="100" />
+            <TableViewColumn Header="Обнаружена" Binding="{ReflectionBinding LastSeen}" Width="120" />
           </TableView.Columns>
         </TableView>
         <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24">
-          <TextBlock Text="Нет точек доступа для отображения" HorizontalAlignment="Center" FontSize="18" />
+          <TextBlock Text="Нет точек доступа для отображения" HorizontalAlignment="Center" />
           <TextBlock Text="Выполните сканирование или измените фильтры." Classes="subtitle" HorizontalAlignment="Center" />
         </StackPanel>
       </Grid>
     </Border>
-    <Border Grid.Row="5" Classes="card" Padding="12" IsVisible="{Binding HasSelectedAccessPoint}">
+    <Border Grid.Row="5" Classes="card" IsVisible="{Binding HasSelectedAccessPoint}">
       <StackPanel Spacing="6">
         <TextBlock Text="Выбранная точка доступа" FontWeight="SemiBold" />
         <TextBlock Text="{Binding SelectedAccessPoint.Details}" TextWrapping="Wrap" />

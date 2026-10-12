@@ -2,7 +2,7 @@
              xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels" xmlns:models="using:WirelessSecurityAnalyzer.Core.Models"
              x:Class="WirelessSecurityAnalyzer.App.Views.DevicesView" x:DataType="vm:DevicesViewModel">
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Spacing="14">
+    <StackPanel Spacing="8">
       <StackPanel Spacing="6">
         <TextBlock Text="Устройства локальной сети" Classes="title" />
         <TextBlock Text="Узлы выбранной IPv4-подсети · список не определяет клиентов конкретной точки доступа" Classes="subtitle" />
@@ -14,14 +14,18 @@
         <Button Grid.Column="1" Content="Обновить интерфейсы" Command="{Binding RefreshInterfacesCommand}" />
       </Grid>
       <TextBlock Text="{Binding InterfaceText}" Classes="subtitle" />
-      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
-        <Border Classes="card" Padding="14"><StackPanel Spacing="5"><TextBlock Text="IPv4 компьютера" Classes="subtitle" /><TextBlock Text="{Binding LocalIpText}" FontSize="17" /></StackPanel></Border>
-        <Border Grid.Column="1" Classes="card" Padding="14"><StackPanel Spacing="5"><TextBlock Text="Подсеть / маска" Classes="subtitle" /><TextBlock Text="{Binding SubnetText}" FontSize="17" /><TextBlock Text="{Binding MaskText}" Classes="subtitle" /></StackPanel></Border>
-        <Border Grid.Column="2" Classes="card" Padding="14"><StackPanel Spacing="5"><TextBlock Text="Шлюз" Classes="subtitle" /><TextBlock Text="{Binding GatewayText}" FontSize="17" /></StackPanel></Border>
-        <Border Grid.Column="3" Classes="card" Padding="14"><StackPanel Spacing="5"><TextBlock Text="{Binding KnownCount, StringFormat='Известно: {0}'}" Classes="subtitle" /><TextBlock Text="{Binding OnlineCount, StringFormat='Online: {0}'}" FontSize="17" Foreground="{DynamicResource SignalBrush}" /></StackPanel></Border>
+      <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+        <TextBlock Text="IPv4 компьютера:" />
+        <TextBlock Grid.Column="1" Text="{Binding LocalIpText}" />
+        <TextBlock Grid.Column="2" Text="Шлюз:" />
+        <TextBlock Grid.Column="3" Text="{Binding GatewayText}" />
+        <TextBlock Grid.Row="1" Text="Подсеть:" />
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SubnetText}" />
+        <TextBlock Grid.Row="1" Grid.Column="2" Text="Маска:" />
+        <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding MaskText}" />
       </Grid>
       <WrapPanel Orientation="Horizontal">
-        <Button Content="Сканировать" Classes="primary" Command="{Binding ScanCommand}" Margin="0,0,10,6" />
+        <Button Content="Сканировать" Command="{Binding ScanCommand}" Margin="0,0,10,6" />
         <Button Content="Начать мониторинг" Command="{Binding StartMonitoringCommand}" Margin="0,0,10,6" />
         <Button Content="Остановить" Command="{Binding StopMonitoringCommand}" Margin="0,0,18,6" />
         <TextBlock Text="Интервал, сек:" VerticalAlignment="Center" Margin="0,0,10,6" />
@@ -81,6 +85,8 @@
       </Border>
       <WrapPanel Orientation="Horizontal">
         <TextBlock Text="{Binding LastScanText}" Classes="subtitle" Margin="0,0,24,0" />
+        <TextBlock Text="{Binding KnownCount, StringFormat='Известно: {0}'}" Classes="subtitle" Margin="0,0,18,0" />
+        <TextBlock Text="{Binding OnlineCount, StringFormat='Online: {0}'}" Classes="subtitle" Margin="0,0,18,0" />
         <TextBlock Text="{Binding UnknownCount, StringFormat='Unknown: {0}'}" Classes="subtitle" Margin="0,0,18,0" />
         <TextBlock Text="{Binding OfflineCount, StringFormat='Offline: {0}'}" Classes="subtitle" />
       </WrapPanel>
