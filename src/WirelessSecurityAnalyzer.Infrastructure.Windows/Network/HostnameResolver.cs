@@ -18,7 +18,7 @@ public sealed class HostnameResolver(ILogger logger, IIdentityDatagramClient dat
     {
         if (!network.Subnet.ContainsHost(address)) return null;
         var servers = (dnsServers ?? new LocalDnsServerProvider()).GetServers(network)
-            .Where(ip => network.Subnet.ContainsHost(ip)).Distinct().Take(2).ToArray();
+            .Where(ip => network.Subnet.ContainsHost(ip)).Distinct().Take(3).ToArray();
         var id = DnsPacket.NewId();
         var question = DnsPacket.Reverse(address);
         string? result = null;
@@ -28,23 +28,26 @@ public sealed class HostnameResolver(ILogger logger, IIdentityDatagramClient dat
         {
             foreach (var server in servers)
             {
-                await datagrams.QueryAsync(network, new IPEndPoint(server, 53),
-                    [DnsPacket.Query(id, [new(question, 12)])], TimeSpan.FromMilliseconds(Math.Clamp(timeoutMs, 1, 2000) / (double)servers.Length), packet =>
-                    {
-                        try
+                try
+                {
+                    await datagrams.QueryAsync(network, new IPEndPoint(server, 53),
+                        [DnsPacket.Query(id, [new(question, 12)])], TimeSpan.FromMilliseconds(Math.Clamp(timeoutMs, 1, 2000) / (double)servers.Length), packet =>
                         {
-                            var message = DnsPacket.Parse(packet.Data);
-                            if (message.Id != id || !message.IsAnswer || !message.Questions.Any(q => q.Type == 12 && q.Name.Equals(question, StringComparison.OrdinalIgnoreCase))) return;
-                            result ??= message.Records.Where(r => r.Type == 12 && r.Class == 1 && r.Name.Equals(question, StringComparison.OrdinalIgnoreCase))
-                                .Select(r => DeviceIdentityMerger.Clean(r.Target)).FirstOrDefault(n => n is not null && !IPAddress.TryParse(n, out _));
-                        }
-                        catch (FormatException exception) { logger.Debug(exception, "Malformed local reverse DNS response"); }
-                    }, timeout.Token, isComplete: () => result is not null).ConfigureAwait(false);
+                            try
+                            {
+                                var message = DnsPacket.Parse(packet.Data);
+                                if (message.Id != id || !message.IsAnswer || !message.Questions.Any(q => q.Type == 12 && q.Name.Equals(question, StringComparison.OrdinalIgnoreCase))) return;
+                                result ??= message.Records.Where(r => r.Type == 12 && r.Class == 1 && r.Name.Equals(question, StringComparison.OrdinalIgnoreCase))
+                                    .Select(r => DeviceIdentityMerger.Clean(r.Target)).FirstOrDefault(n => n is not null && !IPAddress.TryParse(n, out _));
+                            }
+                            catch (FormatException exception) { logger.Debug(exception, "Malformed local reverse DNS response"); }
+                        }, timeout.Token, isComplete: () => result is not null).ConfigureAwait(false);
+                }
+                catch (SocketException exception) { logger.Debug(exception, "Local DNS server {Server} unavailable", server); }
                 if (result is not null) break;
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
-        catch (SocketException exception) { logger.Debug(exception, "Local reverse DNS unavailable"); }
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }
@@ -57,7 +60,19 @@ public interface ILocalDnsServerProvider
 
 public sealed class LocalDnsServerProvider : ILocalDnsServerProvider
 {
-    public IReadOnlyList<IPAddress> GetServers(LocalNetworkInfo network) =>
-        NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => n.Id.Equals(network.InterfaceId, StringComparison.OrdinalIgnoreCase))
-            ?.GetIPProperties().DnsAddresses.ToArray() ?? [];
+    public IReadOnlyList<IPAddress> GetServers(LocalNetworkInfo network)
+    {
+        var adapter = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => n.OperationalStatus == OperationalStatus.Up &&
+            n.Id.Equals(network.InterfaceId, StringComparison.OrdinalIgnoreCase));
+        if (adapter is null) return [];
+        var properties = adapter.GetIPProperties();
+        if (properties.GetIPv4Properties()?.Index != network.InterfaceIndex ||
+            !properties.UnicastAddresses.Any(a => a.Address.Equals(network.LocalIpv4))) return [];
+        return SelectServers(network, properties.DnsAddresses);
+    }
+
+    internal static IReadOnlyList<IPAddress> SelectServers(LocalNetworkInfo network, IEnumerable<IPAddress> configured) =>
+        configured.Where(network.Subnet.ContainsHost)
+            .Concat(network.Gateway is { } gateway && network.Subnet.ContainsHost(gateway) ? [gateway] : [])
+            .Distinct().Take(3).ToArray();
 }

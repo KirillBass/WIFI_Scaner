@@ -24,6 +24,7 @@ public sealed class IdentityDatagramClient : IIdentityDatagramClient
             throw new ArgumentException("Identity queries must stay on the selected link.", nameof(destination));
         using var udp = new UdpClient(new IPEndPoint(network.LocalIpv4, 0));
         IdentitySocketScope.SelectInterface(udp.Client, network);
+        if (destination.Port == 5353) udp.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.IpTimeToLive, 255);
         var multicast = destination.Address.GetAddressBytes()[0] is >= 224 and <= 239;
         if (multicast)
         {

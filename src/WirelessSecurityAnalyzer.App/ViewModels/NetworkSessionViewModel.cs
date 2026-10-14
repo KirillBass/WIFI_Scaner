@@ -19,13 +19,13 @@ public sealed class NetworkSessionViewModel : ViewModelBase, IDisposable
     public bool IsReady => Current.IsReadyForAudit;
     public bool IsConnecting => Current.State is WifiConnectionState.Connecting or WifiConnectionState.Authenticating or WifiConnectionState.Disconnecting;
     public string Ssid => Clean(Current.Ssid);
-    public string Bssid => Current.Bssid ?? "—";
+    public string Bssid => Current.Bssid ?? "-";
     public string InterfaceName => Clean(Current.InterfaceName);
-    public string Ipv4 => Current.Ipv4 ?? "—";
-    public string Subnet => Current.Subnet ?? "—";
-    public string Gateway => Current.Gateway ?? "—";
+    public string Ipv4 => Current.Ipv4 ?? "-";
+    public string Subnet => Current.Subnet ?? "-";
+    public string Gateway => Current.Gateway ?? "-";
     public string Security => WifiDisplayFormatter.Security(Current.Security);
-    public string ConnectedAt => Current.ConnectedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—";
+    public string ConnectedAt => Current.ConnectedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "-";
     public string Status => Current.State switch
     {
         WifiConnectionState.Connecting => "Подключение к Wi-Fi…",
@@ -53,6 +53,6 @@ public sealed class NetworkSessionViewModel : ViewModelBase, IDisposable
         if (Dispatcher.UIThread.CheckAccess()) Apply();
         else Dispatcher.UIThread.Post(Apply);
     }
-    private static string Clean(string? text) => string.IsNullOrEmpty(text) ? "—" : string.Concat(text.Select(c => char.IsControl(c) ? '□' : c));
+    private static string Clean(string? text) => string.IsNullOrEmpty(text) ? "-" : string.Concat(text.Select(c => char.IsControl(c) ? '□' : c));
     public void Dispose() => _sessions.Updated -= OnUpdated;
 }

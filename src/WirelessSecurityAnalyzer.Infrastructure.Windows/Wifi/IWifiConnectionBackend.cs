@@ -2,7 +2,7 @@ using WirelessSecurityAnalyzer.Core.Models;
 
 namespace WirelessSecurityAnalyzer.Infrastructure.Windows.Wifi;
 
-/// <summary>Native boundary; a fake implementation can drive connection/session tests without hardware.</summary>
+/// <summary>Native boundary for Wi-Fi connection and session operations.</summary>
 public interface IWifiConnectionBackend : IDisposable
 {
     Task<WifiConnectionInfo> ConnectAsync(Guid interfaceId, string profileXml, byte[] ssid,

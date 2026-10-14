@@ -28,7 +28,7 @@ public sealed class AccessPointRowViewModel(WifiAccessPoint accessPoint) : ViewM
     public string DisplayName => $"{Ssid} | {Bssid} | канал {Channel} | {RssiDbm} dBm";
     public int RssiDbm => _accessPoint.RssiDbm;
     public uint LinkQuality => _accessPoint.LinkQuality;
-    public string Channel => _accessPoint.Channel > 0 ? _accessPoint.Channel.ToString(CultureInfo.InvariantCulture) : "—";
+    public string Channel => _accessPoint.Channel > 0 ? _accessPoint.Channel.ToString(CultureInfo.InvariantCulture) : "-";
     public string Band => FormatBand(_accessPoint.Band);
     public string Frequency => _accessPoint.FrequencyMhz.ToString("0.###", CultureInfo.GetCultureInfo("ru-RU")) + " МГц";
     public string LastSeen => _accessPoint.LastSeen.ToLocalTime().ToString("dd.MM HH:mm:ss", CultureInfo.GetCultureInfo("ru-RU"));

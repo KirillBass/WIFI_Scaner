@@ -73,7 +73,7 @@ public sealed partial class AccessPointsViewModel : WifiViewModelBase
         row.AccessPoint.IsHidden || string.IsNullOrEmpty(row.AccessPoint.Ssid) ? "Подключение к скрытой сети без известного SSID не поддерживается." :
         !WifiConnectionPolicy.IsSupported(row.AccessPoint.Security) ? WifiConnectionPolicy.UnsupportedMessage(row.AccessPoint.Security) :
         row.AccessPoint.Security.GroupCipher == WifiCipherType.Tkip
-            ? "Для подключения будет запрошен AES/CCMP; групповой шифр сети — TKIP. Windows выбирает точку данного SSID."
+            ? "Для подключения будет запрошен AES/CCMP; групповой шифр сети - TKIP. Windows выбирает точку данного SSID."
             : "Подключение выполняется к SSID; Windows выбирает подходящую точку доступа.";
     private bool CanConnect() => !_stopped && !IsBusy && _connections is not null && Session is { IsConnecting: false } &&
         SelectedAccessPoint is { AccessPoint.IsHidden: false } row && row.AccessPoint.Ssid.Length > 0 && WifiConnectionPolicy.IsSupported(row.AccessPoint.Security);

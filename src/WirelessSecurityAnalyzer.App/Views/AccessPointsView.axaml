@@ -52,7 +52,7 @@
       <StackPanel Spacing="6">
         <TextBlock Text="Выбранная точка доступа" FontWeight="SemiBold" />
         <TextBlock Text="{Binding SelectedAccessPoint.Details}" TextWrapping="Wrap" />
-        <TextBlock Text="Вендор — владелец OUI, а не модель роутера. Защита — объявленные режимы BSS, а не параметры подключения клиента." Classes="subtitle" TextWrapping="Wrap" />
+        <TextBlock Text="Вендор - владелец OUI, а не модель роутера. Защита - объявленные режимы BSS, а не параметры подключения клиента." Classes="subtitle" TextWrapping="Wrap" />
         <TextBlock Text="{Binding ConnectionHint}" Classes="subtitle" />
       </StackPanel>
     </Border>

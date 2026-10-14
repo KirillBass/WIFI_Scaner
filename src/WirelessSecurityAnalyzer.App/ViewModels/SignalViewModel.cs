@@ -57,16 +57,16 @@ public sealed partial class SignalViewModel : WifiViewModelBase
     }
 
     public bool CanChangeSelection => !IsMonitoring && !IsStopping && !StartMonitoringCommand.IsRunning;
-    public string SelectedSsid => SelectedAccessPoint?.Ssid ?? "—";
-    public string SelectedBssid => SelectedAccessPoint?.Bssid ?? "—";
-    public string SelectedChannel => SelectedAccessPoint?.Channel ?? "—";
-    public string SelectedBand => SelectedAccessPoint?.Band ?? "—";
+    public string SelectedSsid => SelectedAccessPoint?.Ssid ?? "-";
+    public string SelectedBssid => SelectedAccessPoint?.Bssid ?? "-";
+    public string SelectedChannel => SelectedAccessPoint?.Channel ?? "-";
+    public string SelectedBand => SelectedAccessPoint?.Band ?? "-";
     public IReadOnlyList<SignalSample> Samples => _snapshot?.Samples ?? Array.Empty<SignalSample>();
     public SignalStatistics Statistics => _snapshot?.Statistics ?? SignalStatistics.Empty;
     public int SampleCount => Statistics.SampleCount;
     public bool HasSamples => SampleCount > 0;
-    public string CurrentRssiText => _snapshot?.IsPresentInLastScan == false ? "—" : FormatRssi(Statistics.CurrentRssiDbm);
-    public string AverageRssiText => Statistics.AverageRssiDbm is { } value ? value.ToString("0.0", Russian) + " dBm" : "—";
+    public string CurrentRssiText => _snapshot?.IsPresentInLastScan == false ? "-" : FormatRssi(Statistics.CurrentRssiDbm);
+    public string AverageRssiText => Statistics.AverageRssiDbm is { } value ? value.ToString("0.0", Russian) + " dBm" : "-";
     public string MinimumRssiText => FormatRssi(Statistics.MinimumRssiDbm);
     public string MaximumRssiText => FormatRssi(Statistics.MaximumRssiDbm);
     public string LastSeenText => Statistics.LastSeen?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss", Russian) ?? "Измерений ещё нет";
@@ -198,5 +198,5 @@ public sealed partial class SignalViewModel : WifiViewModelBase
         base.ShowError(exception);
     }
 
-    private static string FormatRssi(int? value) => value is { } rssi ? rssi.ToString(Russian) + " dBm" : "—";
+    private static string FormatRssi(int? value) => value is { } rssi ? rssi.ToString(Russian) + " dBm" : "-";
 }

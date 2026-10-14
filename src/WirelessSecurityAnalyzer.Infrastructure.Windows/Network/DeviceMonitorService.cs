@@ -57,6 +57,26 @@ public sealed class DeviceMonitorService(IDeviceDiscoveryService discovery, ILog
         finally { _lifecycle.Release(); }
     }
 
+    public async Task RefreshIdentitiesAsync(LocalNetworkInfo network, CancellationToken cancellationToken = default)
+    {
+        Task worker;
+        await _lifecycle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureIdle();
+            if (Current.Network?.HasSameContext(network) != true || !Current.Devices.Any(d => d.State == DeviceState.Online))
+                throw new NetworkDiscoveryException(NetworkDiscoveryError.ContextChanged, "Refresh discovery in the selected network first.");
+            if (identityResolver is null) return;
+            await StopIdentityAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            identityResolver.InvalidateCache(network, Current.Devices);
+            BeginIdentity(network, cancellationToken);
+            worker = _identityWorker;
+        }
+        finally { _lifecycle.Release(); }
+        await worker.ConfigureAwait(false);
+    }
+
     private void Prepare(LocalNetworkInfo network, DeviceDiscoveryOptions options, bool monitoring, TimeSpan interval, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

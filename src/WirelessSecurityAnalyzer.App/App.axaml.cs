@@ -13,6 +13,8 @@ using WirelessSecurityAnalyzer.Infrastructure.Windows.Wifi;
 using WirelessSecurityAnalyzer.Core.Network;
 using WirelessSecurityAnalyzer.Infrastructure.Windows.Network;
 using WirelessSecurityAnalyzer.Infrastructure.Windows.Network.Identity;
+using WirelessSecurityAnalyzer.Core.NetworkAudit;
+using WirelessSecurityAnalyzer.Infrastructure.Windows.NetworkAudit;
 
 namespace WirelessSecurityAnalyzer.App;
 
@@ -52,6 +54,7 @@ public partial class App : Application
             services.AddSingleton<IUpnpDescriptionClient, UpnpDescriptionClient>();
             services.AddSingleton<IDeviceNameResolver, LocalComputerNameResolver>();
             services.AddSingleton<IDeviceNameResolver, ReverseDnsNameResolver>();
+            services.AddSingleton<IDeviceNameResolver, MdnsUnicastNameResolver>();
             services.AddSingleton<IDeviceNameResolver, NetBiosNameResolver>();
             services.AddSingleton<IDeviceNameResolver, LlmnrNameResolver>();
             services.AddSingleton<INetworkIdentityResolver, MdnsNameResolver>();
@@ -63,6 +66,17 @@ public partial class App : Application
             services.AddSingleton<IHostnameResolver, HostnameResolver>();
             services.AddSingleton<IDeviceDiscoveryService, WindowsDeviceDiscoveryService>();
             services.AddSingleton<IDeviceMonitorService, DeviceMonitorService>();
+            services.AddSingleton(new NetworkAuditOptions());
+            services.AddSingleton<IPortScanner, TcpConnectPortScanner>();
+            services.AddSingleton<IServiceDetector, SshServiceDetector>();
+            services.AddSingleton<IServiceDetector, FtpServiceDetector>();
+            services.AddSingleton<IServiceDetector, GenericBannerServiceDetector>();
+            services.AddSingleton<IServiceDetector, HttpServiceDetector>();
+            services.AddSingleton<IServiceDetector, HttpsServiceDetector>();
+            services.AddSingleton<IServiceDetector, RdpServiceDetector>();
+            services.AddSingleton<IServiceDetector, SmbServiceDetector>();
+            services.AddSingleton<IServiceDetectionEngine, ServiceDetectionEngine>();
+            services.AddSingleton<INetworkAuditService, NetworkAuditService>();
             services.AddSingleton<ISystemSettingsService, WindowsSystemSettingsService>();
             services.AddSingleton<AccessPointsViewModel>();
             services.AddSingleton<DashboardViewModel>();

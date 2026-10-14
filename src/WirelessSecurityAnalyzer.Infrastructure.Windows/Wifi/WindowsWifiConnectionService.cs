@@ -204,7 +204,7 @@ public sealed class WindowsWifiConnectionService(IWifiConnectionBackend backend,
     {
         if (signal is not null) await signal.StopAsync().ConfigureAwait(false);
         if (devices is not null) await devices.ResetAsync().ConfigureAwait(false);
-        identityCache?.Clear();
+        identityCache?.ResetSession();
     }
     private WifiConnectionResult Result(WifiConnectionFailure failure, WifiConnectionRequest? request = null)
     {

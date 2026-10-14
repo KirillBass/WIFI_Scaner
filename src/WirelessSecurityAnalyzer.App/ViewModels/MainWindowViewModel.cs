@@ -67,6 +67,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         Stop();
         await Task.WhenAll(_accessPoints.StopAsync(), _signal.StopAsync(), _channels.StopAsync(), _devices.StopAsync(),
             _connections?.StopAsync() ?? Task.CompletedTask,
+            _audit?.StopAsync() ?? Task.CompletedTask,
             InitializeCommand.ExecutionTask ?? Task.CompletedTask);
     }
 }

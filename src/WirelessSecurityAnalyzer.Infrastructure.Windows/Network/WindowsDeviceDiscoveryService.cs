@@ -8,7 +8,7 @@ using WirelessSecurityAnalyzer.Core.Network;
 
 namespace WirelessSecurityAnalyzer.Infrastructure.Windows.Network;
 
-/// <summary>One bounded discovery cycle; all OS operations are injected and independently testable.</summary>
+/// <summary>One bounded discovery cycle; OS operations are provided through injected interfaces.</summary>
 public sealed class WindowsDeviceDiscoveryService(ILocalNetworkService networks, INeighborTableReader neighbors,
     IHostProbe probe, IHostnameResolver hostnames, ILogger logger, TimeProvider? timeProvider = null) : IDeviceDiscoveryService
 {

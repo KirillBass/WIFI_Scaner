@@ -1,6 +1,6 @@
 # Расширение «Эфира»: Vendor, Wi-Fi Standard, Security
 
-Реализация ТЗ `WirelessSecurityAnalyzer_Air_Vendor_Standard_Security_Codex.docx` от 09.10.2026 поверх существующей Version 5 / Milestones 1–4 + Device Identity. Используются прежние solution, scanner, DI, scan snapshots и monitoring. Новых NuGet-зависимостей нет. Функционал включён в [Version 6 (6.0.0)](https://github.com/KirillBass/WIFI_Scanner/releases/tag/v6.0.0); номер сборки в Directory.Build.props и подпись главного окна обновлены до версии 6.
+Реализация ТЗ `WirelessSecurityAnalyzer_Air_Vendor_Standard_Security_Codex.docx` от 09.10.2026 поверх существующей Version 5 / Milestones 1–4 + Device Identity. Используются прежние solution, scanner, DI, scan snapshots и monitoring. Новых NuGet-зависимостей нет. Функционал включён в [Version 6](https://github.com/KirillBass/WIFI_Scanner/releases/tag/v6.0.0); номер сборки в Directory.Build.props и подпись главного окна обновлены до версии 6.
 
 ```mermaid
 flowchart TD
@@ -57,17 +57,15 @@ flowchart TD
 | `src/WirelessSecurityAnalyzer.App/ViewModels/WifiDisplayFormatter.cs` | Текст UI отдельно от enum/анализа. |
 | `docs/AIR_CAPABILITIES_REPORT.md` | Этот отчёт из 15 пунктов. |
 
-Новые локальные тесты `WifiMetadataTests.cs`, `BssCapabilitiesTests.cs` находятся вне репозитория, в `/home/galkin/.local/share/wsa-local-testing/WIFI_Scanner/tests/`. Отдельный GUI preview также остаётся локальным.
-
 ## 3. Как определяется Vendor
 
-BSSID преобразуется в PhysicalAddress и передаётся существующему MacVendorResolver. Lookup выбирает наиболее длинный префикс 36 → 28 → 24 бита. Проверки валидного unicast MAC и locally administered bit переиспользованы из DeviceStateTracker/MacAddressHelper. Приватный BSSID не ищется в OUI: UI показывает «Локальный / приватный MAC». Для неизвестного назначения — «Не определено».
+BSSID преобразуется в PhysicalAddress и передаётся существующему MacVendorResolver. Lookup выбирает наиболее длинный префикс 36 → 28 → 24 бита. Проверки валидного unicast MAC и locally administered bit переиспользованы из DeviceStateTracker/MacAddressHelper. Приватный BSSID не ищется в OUI: UI показывает «Локальный / приватный MAC». Для неизвестного назначения - «Не определено».
 
 Это зарегистрированный владелец адресного блока, а не доказанная модель/марка роутера. Пример `10:A3:B8` из ТЗ не подменяет базу: в существующем снимке он принадлежит Iskratel d.o.o.
 
 ## 4. Где хранится OUI database
 
-Прежний файл `src/WirelessSecurityAnalyzer.Infrastructure.Windows/Network/Identity/Data/oui.tsv`: 58 242 назначения MA-L/MA-M/MA-S. Встроен в Infrastructure DLL как `WirelessSecurityAnalyzer.Oui.tsv`; lazy-load происходит один раз на экземпляр общего singleton resolver. Происхождение, дата и hash — в соседнем `Data/README.md`. База не дублировалась, runtime web lookup отсутствует.
+Прежний файл `src/WirelessSecurityAnalyzer.Infrastructure.Windows/Network/Identity/Data/oui.tsv`: 58 242 назначения MA-L/MA-M/MA-S. Встроен в Infrastructure DLL как `WirelessSecurityAnalyzer.Oui.tsv`; lazy-load происходит один раз на экземпляр общего singleton resolver. Происхождение, дата и hash - в соседнем `Data/README.md`. База не дублировалась, runtime web lookup отсутствует.
 
 ## 5. Как определяется Wi-Fi Standard
 
@@ -92,15 +90,15 @@ Native PHY сначала сопоставляется с enum: OFDM + 5 ГГц 
 
 ## 7. Как определяется WPA/WPA2/WPA3
 
-Приоритет: валидный RSN → валидный legacy WPA → подтверждённый Open/WEP fallback. RSN с PSK/EAP соответствует WPA2; SAE/FT-SAE/SAE extended key — WPA3-Personal; Suite-B-192 и FT-802.1X-SHA384 — WPA3-Enterprise. PSK + SAE обозначает WPA2/WPA3 transition. OWE AKM также распознаётся отдельно и не показывается как незашифрованный Open.
+Приоритет: валидный RSN → валидный legacy WPA → подтверждённый Open/WEP fallback. RSN с PSK/EAP соответствует WPA2; SAE/FT-SAE/SAE extended key - WPA3-Personal; Suite-B-192 и FT-802.1X-SHA384 - WPA3-Enterprise. PSK + SAE обозначает WPA2/WPA3 transition. OWE AKM также распознаётся отдельно и не показывается как незашифрованный Open.
 
 Open требует снятого Privacy bit, отсутствия RSN/WPA и полного неповреждённого TLV-потока. WEP требует Privacy bit, отсутствия RSN/WPA, корректных IE и согласованного Open/Shared + WEP cipher в cached WLAN_AVAILABLE_NETWORK. Для сопоставления требуются nonhidden одинаковые байты SSID/BSS type, единственный BSSID и отсутствие конфликтов между Windows-записями. Неоднозначность или недоступный API → Unknown. Windows network list читается не более одного раза на интерфейс/scan, только когда нужен WEP fallback; новый WlanScan не запускается.
 
-CCMP/TKIP/Privacy bit не определяют поколение защиты. Неизвестные AKM/смешанные неопределимые семейства не превращаются в WPA2/WPA3. Неполный RSN также не позволяет перейти к Open/WEP. Suites сверены с [исходниками wpa_supplicant](https://android.googlesource.com/platform/external/wpa_supplicant_8/+/refs/heads/main/src/common/wpa_common.h); Windows поля — с [WLAN_AVAILABLE_NETWORK](https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_available_network).
+CCMP/TKIP/Privacy bit не определяют поколение защиты. Неизвестные AKM/смешанные неопределимые семейства не превращаются в WPA2/WPA3. Неполный RSN также не позволяет перейти к Open/WEP. Suites сверены с [исходниками wpa_supplicant](https://android.googlesource.com/platform/external/wpa_supplicant_8/+/refs/heads/main/src/common/wpa_common.h); Windows поля - с [WLAN_AVAILABLE_NETWORK](https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_available_network).
 
 ## 8. Как определяется Personal/Enterprise
 
-Authentication хранится отдельно от Protocol. PSK/FT-PSK/SHA variants и SAE относятся к Personal; 802.1X/EAP и поддержанные Suite-B-192 варианты — к Enterprise. Для неизвестного selector, OWE или сочетания Personal + Enterprise используется Authentication.Unknown. Поэтому UI может показать просто «WPA2» без необоснованного суффикса Personal. `IsEnterprise` вычисляется из Authentication; transition flag назначается только при подтверждённом PSK + SAE.
+Authentication хранится отдельно от Protocol. PSK/FT-PSK/SHA variants и SAE относятся к Personal; 802.1X/EAP и поддержанные Suite-B-192 варианты - к Enterprise. Для неизвестного selector, OWE или сочетания Personal + Enterprise используется Authentication.Unknown. Поэтому UI может показать просто «WPA2» без необоснованного суффикса Personal. `IsEnterprise` вычисляется из Authentication; transition flag назначается только при подтверждённом PSK + SAE.
 
 ## 9. Как определяется cipher
 
@@ -110,7 +108,7 @@ Authentication хранится отдельно от Protocol. PSK/FT-PSK/SHA v
 
 ## 10. Обработка malformed IE
 
-Перед native copy проверяются total size, count/stride, entry offset, диапазон IE относительно всей таблицы и конца выделенного списка. Сложение смещений выполняется в ulong; лимиты — 64 MiB на список и 65 535 байт на IE buffer. `IeOffset` отсчитывается от конкретного WLAN_BSS_ENTRY, что соответствует [Microsoft WLAN_BSS_ENTRY](https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_bss_entry). Копия создаётся до WlanFreeMemory; unmanaged указатели в моделях/UI отсутствуют.
+Перед native copy проверяются total size, count/stride, entry offset, диапазон IE относительно всей таблицы и конца выделенного списка. Сложение смещений выполняется в ulong; лимиты - 64 MiB на список и 65 535 байт на IE buffer. `IeOffset` отсчитывается от конкретного WLAN_BSS_ENTRY, что соответствует [Microsoft WLAN_BSS_ENTRY](https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_bss_entry). Копия создаётся до WlanFreeMemory; unmanaged указатели в моделях/UI отсутствуют.
 
 TLV header/Length и все RSN count/optional fields проверяются перед чтением. Unknown IE пропускается. Обрезанный поток, некорректный security IE, конфликтующие дубликаты или противоречивый MFPR/MFPC дают Unknown security. Более ранний валидный PHY IE сохраняется. Невалидное IE-смещение оставляет BSS в таблице с Native PHY и неизвестной защитой. Невалидный основной SSID length пропускает только эту BSS. На Debug пишутся суммарные счётчики повреждений, а не каждый IE или SSID/BSSID.
 
@@ -120,24 +118,8 @@ TLV header/Length и все RSN count/optional fields проверяются п�
 
 WPA3-Enterprise распознаётся только по однозначно поддержанным AKM; обычный EAP/SHA256 с PMF не объявляется WPA3-Enterprise по предположению. Все enterprise combinations/certification modes ещё не охвачены. WEP с несколькими BSSID/hidden SSID без точного сопоставления остаётся Unknown. OUI является локальным снимком и может не содержать новое назначение. Данные показывают объявленные возможности BSS, а не безопасность фактического соединения клиента. Проверка настоящего Native API требует Windows; Linux его не выполняет.
 
-## 12. Результат dotnet build
+## 12. Future improvements
 
-`dotnet restore WirelessSecurityAnalyzer.sln --locked-mode` и `dotnet build WirelessSecurityAnalyzer.sln -c Release --no-restore`: успешно, **0 ошибок, 0 предупреждений**. Solution и locked NuGet dependencies сохранены. При подготовке Version 6 проверки повторены; self-contained Windows x64 publish через прежний WindowsX64 profile формирует приложение версии 6.0.0. В релизе доступны ZIP с полной папкой `win-x64/` и отдельная контрольная сумма SHA-256.
-
-## 13. Результат dotnet test
-
-Baseline: 333 passed, 0 failed, 2 skipped. Итог локальной solution: **447 passed, 0 failed, 2 skipped** — Core 207, Windows/UI 240. Добавлено 114 проверок: поколения/legacy/6E, security suites/transition/cipher/PMF, WEP ambiguity, OUI/private BSSID, native bounds/lifetime/ABI, malformed/truncated/duplicate/unknown IE, 20 000 deterministic fuzz inputs, сохранение измерений и UI selection/updates.
-
-Все прежние тесты сканирования, RSSI/истории, Channel Analyzer, Device Discovery/Monitoring/Identity и навигации проходят. Два skipped integration сценария требуют реального Windows WLAN/neighbor API. `dotnet test` production solution также успешен; собственных test projects в ней нет по принятому правилу пользователя. Настоящие тесты выполняются через локальную solution вне репозитория; в публикуемые проекты тестовые зависимости не добавлены.
-
-## 14. Результат ручной проверки
-
-На Linux выполнен запуск production GUI/DI и проверена обработка UnsupportedPlatform. В отдельном локальном preview используются реальные Views/ViewModels с подставными BSS 2,4/5/6 ГГц. Проверены новые колонки/горизонтальная прокрутка, vendor/private/Unknown, Wi-Fi 6E/7, Open/Personal/Enterprise/transition, tooltip/cipher/PMF, выбранная строка и её обновление после повторного scan, канал-анализатор и RSSI monitoring. Скриншоты и preview остаются локально.
-
-Реальные BSS и драйверы Windows, USB adapter unplug/recovery и настоящий 6-GHz радиоэфир в этой Linux-среде проверить нельзя; аппаратная проверка остаётся отдельным шагом.
-
-## 15. Future improvements
-
-Аппаратная матрица Windows 10/11 и разных драйверов; расширение однозначных AKM mappings при наличии fixtures; IE fragmentation/Multi-BSSID profile parsing; достоверная ширина/80+80/puncturing и отдельная адаптация Channel Analyzer; provenance/conflict indicators для PHY; обновление OUI-снимка разработчиком.
+Расширение однозначных AKM mappings; IE fragmentation/Multi-BSSID profile parsing; достоверная ширина/80+80/puncturing и отдельная адаптация Channel Analyzer; provenance/conflict indicators для PHY; обновление OUI-снимка разработчиком.
 
 Текущий функционал использует только локальные WLAN metadata и embedded OUI. Внешние MAC/IP/hostname API, packet capture и атакующие функции не добавлялись.

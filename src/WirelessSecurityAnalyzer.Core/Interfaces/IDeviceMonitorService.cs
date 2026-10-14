@@ -10,6 +10,7 @@ public interface IDeviceMonitorService
     Task DiscoverOnceAsync(LocalNetworkInfo network, DeviceDiscoveryOptions options, CancellationToken cancellationToken = default);
     Task StartAsync(LocalNetworkInfo network, DeviceDiscoveryOptions options, TimeSpan? interval = null,
         CancellationToken cancellationToken = default);
+    Task RefreshIdentitiesAsync(LocalNetworkInfo network, CancellationToken cancellationToken = default) => Task.CompletedTask;
     Task StopAsync();
     Task ResetAsync() => StopAsync();
 }

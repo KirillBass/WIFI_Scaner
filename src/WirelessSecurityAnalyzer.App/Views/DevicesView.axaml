@@ -26,12 +26,14 @@
       </Grid>
       <WrapPanel Orientation="Horizontal">
         <Button Content="Сканировать" Command="{Binding ScanCommand}" Margin="0,0,10,6" />
+        <Button Content="Обновить имена" Command="{Binding RefreshNamesCommand}" Margin="0,0,10,6" />
         <Button Content="Начать мониторинг" Command="{Binding StartMonitoringCommand}" Margin="0,0,10,6" />
         <Button Content="Остановить" Command="{Binding StopMonitoringCommand}" Margin="0,0,18,6" />
         <TextBlock Text="Интервал, сек:" VerticalAlignment="Center" Margin="0,0,10,6" />
         <ComboBox ItemsSource="{Binding Intervals}" SelectedItem="{Binding SelectedInterval}" IsEnabled="{Binding CanConfigure}" Width="90" Margin="0,0,0,6" />
       </WrapPanel>
       <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+      <TextBlock Text="IP/MAC обнаруживаются отдельно от имени. Дождитесь определения имён; «Остановить» отменяет и эти запросы. Если имя не получено, используйте «Обновить имена»." Classes="subtitle" FontSize="12" />
       <Border Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}" Padding="12">
         <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" />
       </Border>

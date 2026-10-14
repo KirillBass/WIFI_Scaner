@@ -20,7 +20,7 @@ public sealed record NetworkDevice(IPAddress IpAddress, PhysicalAddress? MacAddr
     public string? DeviceType => Identity?.DeviceType;
     public DeviceNameSource NameSource => Identity?.NameSource ?? DeviceNameSource.None;
     public DateTimeOffset? IdentityLastUpdated => Identity?.LastUpdated;
-    public string DisplayName => Identity?.DisplayName is { } name && name != "—" ? name : !string.IsNullOrWhiteSpace(Hostname) ? Hostname : "—";
+    public string DisplayName => Identity?.DisplayName is { } name && name != "-" ? name : !string.IsNullOrWhiteSpace(Hostname) ? Hostname : "-";
 }
 
 public sealed record NetworkDeviceObservation(IPAddress IpAddress, PhysicalAddress? MacAddress,

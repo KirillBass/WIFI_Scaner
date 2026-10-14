@@ -22,6 +22,8 @@ public sealed partial class DevicesViewModel : ViewModelBase
     private IReadOnlyList<NetworkDevice>? _shownDevices;
     private bool _sweepAllowed;
     private bool _stopped;
+    private bool _namesStopped;
+    private const string NamesStoppedMessage = "Поиск имён остановлен. Найденные устройства сохранены. Для повторной попытки нажмите «Обновить имена».";
     private readonly NetworkSessionViewModel? _session;
     private Guid _sessionId;
     private bool _sessionNetworkApplied;
@@ -48,14 +50,16 @@ public sealed partial class DevicesViewModel : ViewModelBase
     public bool IsEmpty => Devices.Count == 0;
     public string EmptyText => KnownCount > 0 ? "Нет устройств, соответствующих фильтрам." : "Устройства пока не обнаружены.";
     public string InterfaceText => SelectedNetwork?.InterfaceDescription ?? "Активный локальный IPv4-интерфейс не найден";
-    public string LocalIpText => SelectedNetwork?.LocalIpv4.ToString() ?? "—";
-    public string SubnetText => SelectedNetwork is { } n ? $"{n.NetworkAddress}/{n.PrefixLength}" : "—";
-    public string GatewayText => SelectedNetwork?.Gateway?.ToString() ?? "—";
-    public string MaskText => SelectedNetwork?.SubnetMask.ToString() ?? "—";
+    public string LocalIpText => SelectedNetwork?.LocalIpv4.ToString() ?? "-";
+    public string SubnetText => SelectedNetwork is { } n ? $"{n.NetworkAddress}/{n.PrefixLength}" : "-";
+    public string GatewayText => SelectedNetwork?.Gateway?.ToString() ?? "-";
+    public string MaskText => SelectedNetwork?.SubnetMask.ToString() ?? "-";
     public bool CanConfigure => !_stopped && !IsLoading && !IsBusy && !IsMonitoring &&
         !(_session?.Current.State is WifiConnectionState.Connecting or WifiConnectionState.Authenticating or
             WifiConnectionState.Connected or WifiConnectionState.ObtainingAddress or WifiConnectionState.Disconnecting);
     public bool CanDiscover => CanConfigure && SelectedNetwork is not null && _sweepAllowed;
+    public bool CanRefreshNames => CanConfigure && !IsResolvingIdentities && OnlineCount > 0 &&
+        SelectedNetwork is { } selected && _snapshot.Network?.HasSameContext(selected) == true;
     public bool CanStop => !_stopped && (IsBusy || IsMonitoring || IsResolvingIdentities);
 
     [ObservableProperty] private LocalNetworkInfo? _selectedNetwork;
@@ -63,13 +67,13 @@ public sealed partial class DevicesViewModel : ViewModelBase
     [ObservableProperty] private int _selectedStateIndex;
     [ObservableProperty] private int _selectedSortIndex;
     [ObservableProperty] private int _selectedInterval = 30;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(RefreshInterfacesCommand))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(RefreshInterfacesCommand), nameof(RefreshNamesCommand))]
     private bool _isLoading;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(StopMonitoringCommand), nameof(RefreshInterfacesCommand))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(StopMonitoringCommand), nameof(RefreshInterfacesCommand), nameof(RefreshNamesCommand))]
     private bool _isBusy;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(StopMonitoringCommand), nameof(RefreshInterfacesCommand))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanConfigure)), NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(StartMonitoringCommand), nameof(StopMonitoringCommand), nameof(RefreshInterfacesCommand), nameof(RefreshNamesCommand))]
     private bool _isMonitoring;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStop)), NotifyCanExecuteChangedFor(nameof(StopMonitoringCommand))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanStop)), NotifyCanExecuteChangedFor(nameof(StopMonitoringCommand), nameof(RefreshNamesCommand))]
     private bool _isResolvingIdentities;
     [ObservableProperty] private string _statusText = "Определение локальной IPv4-сети…";
     [ObservableProperty] private string _errorMessage = string.Empty;
@@ -104,7 +108,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
         { UseSessionNetwork(network); _sessionNetworkApplied = true; }
         OnPropertyChanged(nameof(CanConfigure));
         ScanCommand.NotifyCanExecuteChanged(); StartMonitoringCommand.NotifyCanExecuteChanged();
-        RefreshInterfacesCommand.NotifyCanExecuteChanged(); StopMonitoringCommand.NotifyCanExecuteChanged();
+        RefreshInterfacesCommand.NotifyCanExecuteChanged(); StopMonitoringCommand.NotifyCanExecuteChanged(); RefreshNamesCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
@@ -112,6 +116,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
     partial void OnSelectedSortIndexChanged(int value) => ApplyFilter();
     partial void OnSelectedNetworkChanged(LocalNetworkInfo? value)
     {
+        _namesStopped = false;
         _shownDevices = null; _rows.Clear(); Devices.Clear();
         foreach (var name in new[] { nameof(InterfaceText), nameof(LocalIpText), nameof(SubnetText), nameof(GatewayText), nameof(MaskText) }) OnPropertyChanged(name);
         _sweepAllowed = false;
@@ -156,6 +161,9 @@ public sealed partial class DevicesViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanDiscover))]
     private Task ScanAsync() => RunDiscoveryAsync(network => _monitor.DiscoverOnceAsync(network, _options, _lifetime.Token));
 
+    [RelayCommand(CanExecute = nameof(CanRefreshNames))]
+    private Task RefreshNamesAsync() => RunDiscoveryAsync(network => _monitor.RefreshIdentitiesAsync(network, _lifetime.Token));
+
     [RelayCommand(CanExecute = nameof(CanDiscover))]
     private Task StartMonitoringAsync() => RunDiscoveryAsync(network =>
         _monitor.StartAsync(network, _options, TimeSpan.FromSeconds(SelectedInterval), _lifetime.Token));
@@ -163,6 +171,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
     private async Task RunDiscoveryAsync(Func<LocalNetworkInfo, Task> operation)
     {
         if (SelectedNetwork is not { } network || _stopped) return;
+        _namesStopped = false;
         IsBusy = true; HasError = false;
         Exception? failure = null;
         try { await operation(network).ConfigureAwait(false); }
@@ -174,12 +183,16 @@ public sealed partial class DevicesViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanStop))]
     private async Task StopMonitoringAsync()
     {
+        var namesWerePending = IsResolvingIdentities;
+        _namesStopped = namesWerePending;
         await _monitor.StopAsync().ConfigureAwait(false);
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_stopped) return;
             ApplySnapshot(_monitor.Current);
-            if (!HasError) StatusText = "Операция остановлена. Последние успешные результаты сохранены.";
+            if (!HasError) StatusText = namesWerePending
+                ? NamesStoppedMessage
+                : "Операция остановлена. Последние успешные результаты сохранены.";
         });
     }
 
@@ -208,7 +221,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
                 var row = _rows.FirstOrDefault(r => !target.Contains(r) && device.MacAddress is not null && Equals(r.Device.MacAddress, device.MacAddress));
                 row ??= _rows.FirstOrDefault(r => !target.Contains(r) && r.Device.IpAddress.Equals(device.IpAddress) &&
                     (device.MacAddress is null || r.Device.MacAddress is null || Equals(r.Device.MacAddress, device.MacAddress)));
-                if (row is null) row = new DeviceRowViewModel(device); else row.Device = device;
+                if (row is null) row = new DeviceRowViewModel(device, SelectedNetwork?.Name); else row.Device = device;
                 target.Add(row);
             }
             _rows.Clear(); _rows.AddRange(target); _shownDevices = _snapshot.Devices;
@@ -223,6 +236,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
         }
         StatusText = HasError ? "Операция не выполнена. Последние успешные результаты сохранены." : IsBusy ? "Обнаружение устройств локальной сети…" :
             IsResolvingIdentities ? $"Найдено устройств: {KnownCount} · имена и производители определяются асинхронно…" :
+            _namesStopped ? NamesStoppedMessage :
             IsMonitoring ? "● Мониторинг активен · следующий цикл после завершения интервала" :
             _snapshot.LastCompletedAt is null ? "Нажмите «Сканировать», чтобы обнаружить устройства локальной сети." :
             _rows.All(r => r.Device.IsLocalMachine) ? "Другие активные устройства не обнаружены. Возможны Client Isolation, guest network или фильтрация ICMP." : $"Известно устройств: {KnownCount} · Online: {OnlineCount}";
@@ -249,6 +263,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
     private void NotifyCounts()
     {
         foreach (var name in new[] { nameof(KnownCount), nameof(OnlineCount), nameof(UnknownCount), nameof(OfflineCount), nameof(IsEmpty), nameof(EmptyText) }) OnPropertyChanged(name);
+        RefreshNamesCommand.NotifyCanExecuteChanged();
     }
 
     private void ShowError(Exception exception)
@@ -264,7 +279,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
         NetworkDiscoveryError.UnsupportedPlatform => "Обнаружение устройств доступно в Windows 10/11. Таблица соседей Windows на этой платформе недоступна.",
         NetworkDiscoveryError.NoInterface => "Активный локальный IPv4-интерфейс не найден.",
         NetworkDiscoveryError.ContextChanged => "Интерфейс или IPv4-сеть изменились. Мониторинг остановлен; обновите список интерфейсов и повторите сканирование.",
-        NetworkDiscoveryError.SubnetTooLarge => "Автоматический полный scan отключён: подсеть содержит слишком много адресов. Максимум — 1024 адреса.",
+        NetworkDiscoveryError.SubnetTooLarge => "Автоматический полный scan отключён: подсеть содержит слишком много адресов. Максимум - 1024 адреса.",
         NetworkDiscoveryError.UnsupportedSubnet => "Автоматический обход /31 и /32 пока не поддерживается.",
         NetworkDiscoveryError.NeighborTableFailed => "Не удалось прочитать таблицу соседей Windows. Последние результаты сохранены.",
         NetworkDiscoveryError.ProbeFailed => "Не удалось выполнить ICMP-проверки. Проверьте подключение и разрешения Windows.",
@@ -284,6 +299,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
         Stop();
         await _monitor.StopAsync();
         await Task.WhenAll(ScanCommand.ExecutionTask ?? Task.CompletedTask, StartMonitoringCommand.ExecutionTask ?? Task.CompletedTask,
-            StopMonitoringCommand.ExecutionTask ?? Task.CompletedTask, RefreshInterfacesCommand.ExecutionTask ?? Task.CompletedTask);
+            StopMonitoringCommand.ExecutionTask ?? Task.CompletedTask, RefreshInterfacesCommand.ExecutionTask ?? Task.CompletedTask,
+            RefreshNamesCommand.ExecutionTask ?? Task.CompletedTask);
     }
 }

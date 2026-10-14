@@ -63,7 +63,7 @@ public sealed class DeviceStateTracker
     public IReadOnlyList<NetworkDevice> SetResolving(bool resolving)
     {
         foreach (var tracked in _devices)
-            tracked.Device = tracked.Device with { IsIdentityResolving = resolving && tracked.Device.State == DeviceState.Online };
+            tracked.Device = tracked.Device with { IsIdentityResolving = resolving && tracked.Device.State != DeviceState.Offline };
         return Snapshot();
     }
 

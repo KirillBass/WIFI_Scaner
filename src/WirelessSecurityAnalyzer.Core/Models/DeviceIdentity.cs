@@ -21,10 +21,13 @@ public sealed record DeviceIdentity
     public DeviceNameSource DeviceTypeSource { get; init; }
     public DeviceVendorSource VendorSource { get; init; }
     public bool IsPrivateMac { get; init; }
+    // Observation of the displayed name, independent of vendor/metadata updates.
+    public DateTimeOffset? NameObservedAt { get; init; }
+    public string? NameObservedVia { get; init; }
     public DateTimeOffset? LastUpdated { get; init; }
     public DeviceNameSource NameSource => !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyNameSource :
         !string.IsNullOrWhiteSpace(Hostname) ? HostnameSource : DeviceNameSource.None;
-    public string DisplayName => !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName : !string.IsNullOrWhiteSpace(Hostname) ? Hostname : "—";
+    public string DisplayName => !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName : !string.IsNullOrWhiteSpace(Hostname) ? Hostname : "-";
     public IdentificationConfidence Confidence => NameSource is DeviceNameSource.LocalComputer or DeviceNameSource.Ssdp
         ? IdentificationConfidence.High : NameSource != DeviceNameSource.None ? IdentificationConfidence.Medium :
         Vendor is not null ? IdentificationConfidence.Low : IdentificationConfidence.Unknown;

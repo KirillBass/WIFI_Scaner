@@ -8,6 +8,7 @@ public interface IDeviceIdentityResolver
 {
     Task EnrichAsync(LocalNetworkInfo network, IReadOnlyList<NetworkDevice> devices,
         Action<DeviceIdentityUpdate> publish, CancellationToken cancellationToken = default);
+    void InvalidateCache(LocalNetworkInfo network, IReadOnlyList<NetworkDevice> devices) { }
 }
 
 public interface IDeviceNameResolver

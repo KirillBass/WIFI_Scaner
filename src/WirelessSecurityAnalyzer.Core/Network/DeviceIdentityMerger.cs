@@ -23,6 +23,7 @@ public static class DeviceIdentityMerger
         var takeModel = model is not null && (old.ModelName is null || FriendlyRank(modelSource) >= FriendlyRank(Effective(old.ModelNameSource, old.MetadataSource)));
         var takeDescription = description is not null && (old.ModelDescription is null || FriendlyRank(descriptionSource) >= FriendlyRank(Effective(old.ModelDescriptionSource, old.MetadataSource)));
         var takeType = type is not null && (old.DeviceType is null || FriendlyRank(typeSource) >= FriendlyRank(Effective(old.DeviceTypeSource, old.MetadataSource)));
+        var takeDisplayedName = takeFriendly || string.IsNullOrWhiteSpace(old.FriendlyName) && takeHost;
         var merged = old with
         {
             Hostname = takeHost ? hostname : old.Hostname,
@@ -38,7 +39,9 @@ public static class DeviceIdentityMerger
             DeviceType = takeType ? type : old.DeviceType,
             DeviceTypeSource = takeType ? typeSource : old.DeviceType is null ? DeviceNameSource.None : Effective(old.DeviceTypeSource, old.MetadataSource),
             MetadataSource = takeMetadata ? incoming.MetadataSource : old.MetadataSource,
-            IsPrivateMac = old.IsPrivateMac || incoming.IsPrivateMac
+            IsPrivateMac = old.IsPrivateMac || incoming.IsPrivateMac,
+            NameObservedAt = takeDisplayedName ? incoming.NameObservedAt ?? old.NameObservedAt : old.NameObservedAt,
+            NameObservedVia = takeDisplayedName ? Clean(incoming.NameObservedVia) ?? old.NameObservedVia : old.NameObservedVia
         };
         return merged == old ? old : merged with { LastUpdated = incoming.LastUpdated ?? old.LastUpdated };
     }
