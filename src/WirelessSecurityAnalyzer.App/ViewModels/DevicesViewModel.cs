@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,12 +22,18 @@ public sealed partial class DevicesViewModel : ViewModelBase
     private IReadOnlyList<NetworkDevice>? _shownDevices;
     private bool _sweepAllowed;
     private bool _stopped;
+    private readonly NetworkSessionViewModel? _session;
+    private Guid _sessionId;
+    private bool _sessionNetworkApplied;
 
-    public DevicesViewModel(ILocalNetworkService networks, IDeviceMonitorService monitor, DeviceDiscoveryOptions options, ILogger logger)
+    public DevicesViewModel(ILocalNetworkService networks, IDeviceMonitorService monitor, DeviceDiscoveryOptions options, ILogger logger,
+        NetworkSessionViewModel? session = null)
     {
         _networks = networks; _monitor = monitor; _options = options; _logger = logger;
         _snapshot = monitor.Current;
         _monitor.Updated += OnUpdated;
+        _session = session;
+        if (_session is not null) { _session.PropertyChanged += OnSessionChanged; ApplySession(); }
     }
 
     public ObservableCollection<LocalNetworkInfo> Networks { get; } = [];
@@ -45,7 +52,9 @@ public sealed partial class DevicesViewModel : ViewModelBase
     public string SubnetText => SelectedNetwork is { } n ? $"{n.NetworkAddress}/{n.PrefixLength}" : "—";
     public string GatewayText => SelectedNetwork?.Gateway?.ToString() ?? "—";
     public string MaskText => SelectedNetwork?.SubnetMask.ToString() ?? "—";
-    public bool CanConfigure => !_stopped && !IsLoading && !IsBusy && !IsMonitoring;
+    public bool CanConfigure => !_stopped && !IsLoading && !IsBusy && !IsMonitoring &&
+        !(_session?.Current.State is WifiConnectionState.Connecting or WifiConnectionState.Authenticating or
+            WifiConnectionState.Connected or WifiConnectionState.ObtainingAddress or WifiConnectionState.Disconnecting);
     public bool CanDiscover => CanConfigure && SelectedNetwork is not null && _sweepAllowed;
     public bool CanStop => !_stopped && (IsBusy || IsMonitoring || IsResolvingIdentities);
 
@@ -72,6 +81,31 @@ public sealed partial class DevicesViewModel : ViewModelBase
     [ObservableProperty] private string _progressText = string.Empty;
 
     public Task InitializeAsync() => RefreshInterfacesCommand.ExecuteAsync(null);
+
+    public void UseSessionNetwork(LocalNetworkInfo network)
+    {
+        var entry = Networks.FirstOrDefault(n => n.HasSameContext(network));
+        if (entry is null) { Networks.Add(network); entry = network; }
+        if (SelectedNetwork?.HasSameContext(entry) != true) SelectedNetwork = entry;
+    }
+    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
+    { if (e.PropertyName == nameof(NetworkSessionViewModel.Current)) ApplySession(); }
+    private void ApplySession()
+    {
+        if (_session is null || _stopped) return;
+        var session = _session.Current;
+        if (_sessionId != session.SessionId)
+        {
+            _sessionId = session.SessionId; _sessionNetworkApplied = false;
+            _shownDevices = null; _rows.Clear(); Devices.Clear(); SelectedNetwork = null;
+            NotifyCounts();
+        }
+        if (!_sessionNetworkApplied && session.IsReadyForAudit && session.Network is { } network)
+        { UseSessionNetwork(network); _sessionNetworkApplied = true; }
+        OnPropertyChanged(nameof(CanConfigure));
+        ScanCommand.NotifyCanExecuteChanged(); StartMonitoringCommand.NotifyCanExecuteChanged();
+        RefreshInterfacesCommand.NotifyCanExecuteChanged(); StopMonitoringCommand.NotifyCanExecuteChanged();
+    }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnSelectedStateIndexChanged(int value) => ApplyFilter();
@@ -120,24 +154,18 @@ public sealed partial class DevicesViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanDiscover))]
-    private async Task ScanAsync()
-    {
-        if (SelectedNetwork is not { } network || _stopped) return;
-        IsBusy = true; HasError = false;
-        Exception? failure = null;
-        try { await _monitor.DiscoverOnceAsync(network, _options, _lifetime.Token).ConfigureAwait(false); }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-        catch (Exception exception) { failure = exception; }
-        finally { await Dispatcher.UIThread.InvokeAsync(() => { if (!_stopped) { ApplySnapshot(_monitor.Current); if (failure is not null) ShowError(failure); } }); }
-    }
+    private Task ScanAsync() => RunDiscoveryAsync(network => _monitor.DiscoverOnceAsync(network, _options, _lifetime.Token));
 
     [RelayCommand(CanExecute = nameof(CanDiscover))]
-    private async Task StartMonitoringAsync()
+    private Task StartMonitoringAsync() => RunDiscoveryAsync(network =>
+        _monitor.StartAsync(network, _options, TimeSpan.FromSeconds(SelectedInterval), _lifetime.Token));
+
+    private async Task RunDiscoveryAsync(Func<LocalNetworkInfo, Task> operation)
     {
         if (SelectedNetwork is not { } network || _stopped) return;
         IsBusy = true; HasError = false;
         Exception? failure = null;
-        try { await _monitor.StartAsync(network, _options, TimeSpan.FromSeconds(SelectedInterval), _lifetime.Token).ConfigureAwait(false); }
+        try { await operation(network).ConfigureAwait(false); }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception exception) { failure = exception; }
         finally { await Dispatcher.UIThread.InvokeAsync(() => { if (!_stopped) { ApplySnapshot(_monitor.Current); if (failure is not null) ShowError(failure); } }); }
@@ -214,15 +242,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
             2 => filtered.OrderByDescending(r => r.Device.LastSeen).ThenBy(r => SubnetCalculator.ToUInt32(r.Device.IpAddress)),
             _ => filtered.OrderBy(r => SubnetCalculator.ToUInt32(r.Device.IpAddress))
         };
-        var target = sorted.ToArray();
-        var visible = target.ToHashSet();
-        for (var i = Devices.Count - 1; i >= 0; i--) if (!visible.Contains(Devices[i])) Devices.RemoveAt(i);
-        for (var i = 0; i < target.Length; i++)
-        {
-            if (i < Devices.Count && ReferenceEquals(Devices[i], target[i])) continue;
-            var old = Devices.IndexOf(target[i]);
-            if (old >= 0) Devices.Move(old, i); else Devices.Insert(i, target[i]);
-        }
+        SynchronizeRows(Devices, sorted.ToArray());
         OnPropertyChanged(nameof(IsEmpty)); OnPropertyChanged(nameof(EmptyText));
     }
 
@@ -256,6 +276,7 @@ public sealed partial class DevicesViewModel : ViewModelBase
     {
         if (_stopped) return;
         _stopped = true; _monitor.Updated -= OnUpdated; _lifetime.Cancel();
+        if (_session is not null) _session.PropertyChanged -= OnSessionChanged;
     }
 
     public async Task StopAsync()

@@ -4,21 +4,18 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using WirelessSecurityAnalyzer.Core.Analysis;
-using WirelessSecurityAnalyzer.Core.Common;
 using WirelessSecurityAnalyzer.Core.Interfaces;
 using WirelessSecurityAnalyzer.Core.Models;
 
 namespace WirelessSecurityAnalyzer.App.ViewModels;
 
-public sealed partial class ChannelsViewModel : ViewModelBase
+public sealed partial class ChannelsViewModel : WifiViewModelBase
 {
     private static readonly CultureInfo Russian = CultureInfo.GetCultureInfo("ru-RU");
     private readonly IChannelAnalyzer _analyzer;
     private readonly IWifiScanState _scanState;
     private readonly IWifiScanner _scanner;
     private readonly ChannelAnalysisOptions _options;
-    private readonly ISystemSettingsService _settings;
-    private readonly ILogger _logger;
     private readonly CancellationTokenSource _lifetime = new();
     private WifiScanSnapshot? _scanSnapshot;
     private long _sourceVersion;
@@ -27,14 +24,12 @@ public sealed partial class ChannelsViewModel : ViewModelBase
     private (WifiBand Band, int? Channel) _loggedRecommendation;
 
     public ChannelsViewModel(IChannelAnalyzer analyzer, IWifiScanState scanState, IWifiScanner scanner,
-        ChannelAnalysisOptions options, ISystemSettingsService settings, ILogger logger)
+        ChannelAnalysisOptions options, ISystemSettingsService settings, ILogger logger) : base(settings, logger)
     {
         _analyzer = analyzer;
         _scanState = scanState;
         _scanner = scanner;
         _options = options;
-        _settings = settings;
-        _logger = logger;
         _scanState.Updated += OnScanUpdated;
         _scanState.Failed += OnScanFailed;
         if (_scanState.Current is { } snapshot) ApplySnapshot(snapshot);
@@ -44,10 +39,9 @@ public sealed partial class ChannelsViewModel : ViewModelBase
     public IReadOnlyList<string> Bands { get; } = ["2,4 ГГц", "5 ГГц", "6 ГГц"];
     [ObservableProperty] private int _selectedBandIndex;
     [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private bool _hasError;
-    [ObservableProperty] private bool _isLocationPermissionRequired;
-    [ObservableProperty] private string _errorMessage = string.Empty;
-    [ObservableProperty] private string _statusText = "Сначала выполните сканирование Wi-Fi эфира.";
+
+    protected override string UnexpectedErrorMessage => "Не удалось обновить анализ каналов. Подробности сохранены в локальном журнале.";
+    protected override string FailureStatus => "Операция не выполнена. Последний успешный снимок сохранён.";
 
     public WifiBand SelectedBand => SelectedBandIndex switch { 1 => WifiBand.Ghz5, 2 => WifiBand.Ghz6, _ => WifiBand.Ghz2_4 };
     public string SelectedBandText => Bands[Math.Clamp(SelectedBandIndex, 0, 2)];
@@ -100,7 +94,7 @@ public sealed partial class ChannelsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            _logger.Error(exception, "Channel view scan failed");
+            Logger.Error(exception, "Channel view scan failed");
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_stopped) return;
@@ -111,13 +105,6 @@ public sealed partial class ChannelsViewModel : ViewModelBase
             });
         }
         finally { await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false); }
-    }
-
-    [RelayCommand]
-    private void OpenLocationSettings()
-    {
-        try { _settings.OpenLocationSettings(); }
-        catch (Exception exception) { _logger.Error(exception, "Opening location settings failed"); ShowError(exception); }
     }
 
     public void Stop()
@@ -147,9 +134,7 @@ public sealed partial class ChannelsViewModel : ViewModelBase
         if (snapshot.Version <= _sourceVersion) return;
         _sourceVersion = snapshot.Version;
         _scanSnapshot = snapshot;
-        HasError = false;
-        IsLocationPermissionRequired = false;
-        ErrorMessage = string.Empty;
+        SetError(null);
         if (_chooseDefaultBand)
         {
             var available = snapshot.AccessPoints.Select(ap => WifiChannelHelper.FromFrequency(ap.FrequencyMhz).Band).ToHashSet();
@@ -182,18 +167,18 @@ public sealed partial class ChannelsViewModel : ViewModelBase
                 $"BSS в диапазоне: {BssCount} · каналов-кандидатов: {Channels.Count}";
             if (Analysis is { } a)
             {
-                _logger.Debug("Channel analysis: band {Band}, snapshot BSS {TotalBssCount}, valid band BSS {BandBssCount}, candidates {CandidateCount}, recommendation {Channel}, score {Score}",
+                Logger.Debug("Channel analysis: band {Band}, snapshot BSS {TotalBssCount}, valid band BSS {BandBssCount}, candidates {CandidateCount}, recommendation {Channel}, score {Score}",
                     a.Band, _scanSnapshot!.AccessPoints.Count, BssCount, Channels.Count, a.RecommendedChannel,
                     a.Channels.FirstOrDefault(r => r.IsRecommended)?.LoadScorePercent);
                 if (!_hasLoggedRecommendation || _loggedRecommendation != (a.Band, a.RecommendedChannel))
                 {
-                    _logger.Information("Channel recommendation: band {Band}, BSS {BssCount}, candidates {CandidateCount}, channel {Channel}, score {Score}",
+                    Logger.Information("Channel recommendation: band {Band}, BSS {BssCount}, candidates {CandidateCount}, channel {Channel}, score {Score}",
                         a.Band, BssCount, Channels.Count, a.RecommendedChannel, a.Channels.FirstOrDefault(r => r.IsRecommended)?.LoadScorePercent);
                     _loggedRecommendation = (a.Band, a.RecommendedChannel);
                     _hasLoggedRecommendation = true;
                 }
                 if (a.IgnoredBssCount > 0 || a.InvalidCandidateCount > 0)
-                    _logger.Warning("Channel analysis skipped {InvalidBssCount} invalid BSS and {InvalidCandidateCount} invalid candidates from snapshot {Version}",
+                    Logger.Warning("Channel analysis skipped {InvalidBssCount} invalid BSS and {InvalidCandidateCount} invalid candidates from snapshot {Version}",
                         a.IgnoredBssCount, a.InvalidCandidateCount, _scanSnapshot!.Version);
             }
         }
@@ -201,20 +186,11 @@ public sealed partial class ChannelsViewModel : ViewModelBase
         {
             Analysis = null;
             Channels = [];
-            _logger.Error(exception, "Channel analysis failed for band {Band}", SelectedBand);
+            Logger.Error(exception, "Channel analysis failed for band {Band}", SelectedBand);
             ShowError(exception);
         }
         foreach (var name in new[] { nameof(SelectedBand), nameof(SelectedBandText), nameof(Analysis), nameof(Channels),
             nameof(Spectrum), nameof(HasAnalysis), nameof(HasChannelRows), nameof(BssCount), nameof(SnapshotText),
             nameof(RecommendationText), nameof(RecommendedScoreText), nameof(EmptyText), nameof(HasDataNotes), nameof(DataNotesText) }) OnPropertyChanged(name);
-    }
-
-    private void ShowError(Exception exception)
-    {
-        HasError = true;
-        IsLocationPermissionRequired = exception is WifiException { Kind: WifiErrorKind.AccessDenied };
-        ErrorMessage = exception is WifiException wifi ? WifiErrorPresenter.GetMessage(wifi) :
-            "Не удалось обновить анализ каналов. Подробности сохранены в локальном журнале.";
-        StatusText = "Операция не выполнена. Последний успешный снимок сохранён.";
     }
 }

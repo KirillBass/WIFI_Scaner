@@ -3,16 +3,13 @@
              x:Class="WirelessSecurityAnalyzer.App.Views.AccessPointsView" x:DataType="vm:AccessPointsViewModel">
   <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="8">
     <StackPanel Spacing="4"><TextBlock Text="Эфир" Classes="title" /><TextBlock Text="Доступные точки доступа" Classes="subtitle" /><TextBlock Text="{Binding AdapterText}" Classes="subtitle" /></StackPanel>
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
       <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap" />
-      <Button Grid.Column="1" Content="Сканировать" Command="{Binding ScanCommand}" />
-      <Button Grid.Column="2" Content="Отмена" Command="{Binding ScanCancelCommand}" IsVisible="{Binding IsBusy}" />
+      <Button Grid.Column="1" Content="Подключиться" Command="{Binding ConnectCommand}" />
+      <Button Grid.Column="2" Content="Сканировать" Command="{Binding ScanCommand}" />
+      <Button Grid.Column="3" Content="Отмена" Command="{Binding ScanCancelCommand}" IsVisible="{Binding IsBusy}" />
     </Grid>
-    <Border Grid.Row="2" Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}">
-      <StackPanel Spacing="10"><TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}" />
-        <Button Content="Открыть параметры местоположения" Command="{Binding OpenLocationSettingsCommand}" IsVisible="{Binding IsLocationPermissionRequired}" />
-      </StackPanel>
-    </Border>
+    <ContentControl Grid.Row="2" Content="{Binding}" ContentTemplate="{StaticResource WifiErrorTemplate}" IsVisible="{Binding HasError}" />
     <Grid Grid.Row="3" ColumnDefinitions="*,170,Auto" ColumnSpacing="12">
       <TextBox PlaceholderText="Поиск по SSID или BSSID" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
       <ComboBox Grid.Column="1" ItemsSource="{Binding BandFilters}" SelectedIndex="{Binding SelectedBandIndex}" HorizontalAlignment="Stretch" />
@@ -56,6 +53,7 @@
         <TextBlock Text="Выбранная точка доступа" FontWeight="SemiBold" />
         <TextBlock Text="{Binding SelectedAccessPoint.Details}" TextWrapping="Wrap" />
         <TextBlock Text="Вендор — владелец OUI, а не модель роутера. Защита — объявленные режимы BSS, а не параметры подключения клиента." Classes="subtitle" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding ConnectionHint}" Classes="subtitle" />
       </StackPanel>
     </Border>
     <Grid Grid.Row="6" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="6">

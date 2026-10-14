@@ -3,6 +3,11 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
   <StackPanel Spacing="12">
     <TextBlock Text="Обзор" Classes="title" />
+    <StackPanel Spacing="4" IsVisible="{Binding Session.IsConnected}">
+      <TextBlock Text="Текущее подключение" Classes="section" />
+      <TextBlock Text="{Binding Session.Summary}" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding Session.Subnet, StringFormat='Подсеть: {0}'}" Classes="subtitle" />
+    </StackPanel>
     <TextBlock Text="Сводка последнего успешного сканирования" Classes="subtitle" />
     <Grid ColumnDefinitions="200,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="16">
       <TextBlock Text="Всего точек доступа (BSS):" />

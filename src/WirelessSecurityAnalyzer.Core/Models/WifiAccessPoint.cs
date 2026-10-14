@@ -16,4 +16,5 @@ public sealed record WifiAccessPoint(
     public WifiStandard Standard { get; init; }
     public WifiSecurityInfo Security { get; init; } = WifiSecurityInfo.Unknown;
     public bool IsSecurityEnabled { get; init; }
+    public IReadOnlyList<byte>? SsidBytes { get; init; }
 }

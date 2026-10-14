@@ -1,5 +1,7 @@
 namespace WirelessSecurityAnalyzer.Core.Models;
 
+public sealed record SignalSample(DateTimeOffset Timestamp, int RssiDbm);
+
 public sealed record SignalStatistics(int? CurrentRssiDbm, double? AverageRssiDbm,
     int? MinimumRssiDbm, int? MaximumRssiDbm, int SampleCount, DateTimeOffset? LastSeen)
 {

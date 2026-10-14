@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<controls:PlotViewBase xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WirelessSecurityAnalyzer.App.Controls"
              xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels"
              xmlns:plot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
              x:Class="WirelessSecurityAnalyzer.App.Views.SignalView" x:DataType="vm:SignalViewModel">
@@ -39,12 +40,7 @@
         <TextBlock Text="Останавливаем…" IsVisible="{Binding IsStopping}" VerticalAlignment="Center" Classes="subtitle" />
       </StackPanel>
       <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-      <Border Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}" Padding="10">
-        <StackPanel Spacing="7">
-          <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" />
-          <Button Content="Открыть параметры местоположения" Command="{Binding OpenLocationSettingsCommand}" IsVisible="{Binding IsLocationPermissionRequired}" />
-        </StackPanel>
-      </Border>
+      <ContentControl Content="{Binding}" ContentTemplate="{StaticResource WifiErrorTemplate}" IsVisible="{Binding HasError}" />
     </StackPanel>
     <Grid Grid.Row="3" ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
       <TextBlock Text="Текущий RSSI" Classes="subtitle" />
@@ -71,4 +67,4 @@
     </Grid>
   </Grid>
   </ScrollViewer>
-</UserControl>
+</controls:PlotViewBase>

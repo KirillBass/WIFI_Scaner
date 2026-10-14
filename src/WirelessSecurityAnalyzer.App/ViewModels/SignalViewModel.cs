@@ -4,18 +4,15 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
-using WirelessSecurityAnalyzer.Core.Common;
 using WirelessSecurityAnalyzer.Core.Interfaces;
 using WirelessSecurityAnalyzer.Core.Models;
 
 namespace WirelessSecurityAnalyzer.App.ViewModels;
 
-public sealed partial class SignalViewModel : ViewModelBase
+public sealed partial class SignalViewModel : WifiViewModelBase
 {
     private readonly IWifiMonitorService _monitor;
     private readonly IWifiScanState _scanState;
-    private readonly ISystemSettingsService _settings;
-    private readonly ILogger _logger;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Dictionary<string, AccessPointRowViewModel> _choices = new(StringComparer.OrdinalIgnoreCase);
     private AccessPointRowViewModel? _selectedAccessPoint;
@@ -25,12 +22,10 @@ public sealed partial class SignalViewModel : ViewModelBase
     private static readonly CultureInfo Russian = CultureInfo.GetCultureInfo("ru-RU");
 
     public SignalViewModel(IWifiMonitorService monitor, IWifiScanState scanState,
-        ISystemSettingsService settings, ILogger logger)
+        ISystemSettingsService settings, ILogger logger) : base(settings, logger)
     {
         _monitor = monitor;
         _scanState = scanState;
-        _settings = settings;
-        _logger = logger;
         StartMonitoringCommand.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning)) NotifyControls();
@@ -45,10 +40,9 @@ public sealed partial class SignalViewModel : ViewModelBase
     [ObservableProperty] private int _selectedIntervalSeconds = 5;
     [ObservableProperty] private bool _isMonitoring;
     [ObservableProperty] private bool _isStopping;
-    [ObservableProperty] private string _statusText = "Сначала выполните сканирование Wi-Fi эфира.";
-    [ObservableProperty] private string _errorMessage = string.Empty;
-    [ObservableProperty] private bool _hasError;
-    [ObservableProperty] private bool _isLocationPermissionRequired;
+
+    protected override string UnexpectedErrorMessage => "Не удалось выполнить операцию. Подробности сохранены в журнале.";
+    protected override string FailureStatus => "Операция не выполнена. История сохранена.";
 
     public AccessPointRowViewModel? SelectedAccessPoint
     {
@@ -127,13 +121,6 @@ public sealed partial class SignalViewModel : ViewModelBase
         ApplyMonitorSnapshot(_monitor.GetHistory(selected.Bssid));
     }
 
-    [RelayCommand]
-    private void OpenLocationSettings()
-    {
-        try { _settings.OpenLocationSettings(); }
-        catch (Exception exception) { ShowError(exception); }
-    }
-
     public void Stop()
     {
         if (_stopped) return;
@@ -170,16 +157,7 @@ public sealed partial class SignalViewModel : ViewModelBase
             else _choices.Add(ap.Bssid, new AccessPointRowViewModel(ap));
         }
         var target = _choices.Values.OrderBy(row => row.Ssid).ThenBy(row => row.Bssid).ToArray();
-        var visible = target.ToHashSet();
-        for (var i = AccessPoints.Count - 1; i >= 0; i--)
-            if (!visible.Contains(AccessPoints[i])) AccessPoints.RemoveAt(i);
-        for (var i = 0; i < target.Length; i++)
-        {
-            if (i < AccessPoints.Count && ReferenceEquals(AccessPoints[i], target[i])) continue;
-            var oldIndex = AccessPoints.IndexOf(target[i]);
-            if (oldIndex >= 0) AccessPoints.Move(oldIndex, i);
-            else AccessPoints.Insert(i, target[i]);
-        }
+        SynchronizeRows(AccessPoints, target);
         UpdatePresentation();
     }
 
@@ -194,9 +172,7 @@ public sealed partial class SignalViewModel : ViewModelBase
 
     private void UpdatePresentation()
     {
-        HasError = _snapshot?.Error is not null;
-        IsLocationPermissionRequired = _snapshot?.Error?.Kind == WifiErrorKind.AccessDenied;
-        ErrorMessage = _snapshot?.Error is { } error ? WifiErrorPresenter.GetMessage(error) : string.Empty;
+        SetError(_snapshot?.Error);
         StatusText = SelectedAccessPoint is null
             ? AccessPoints.Count == 0 ? "Сначала выполните сканирование Wi-Fi эфира." : "Выберите точку доступа для мониторинга."
             : HasError ? IsMonitoring ? "Ошибка сканирования. Мониторинг продолжится со следующей попытки." : "Мониторинг остановлен из-за ошибки."
@@ -216,13 +192,10 @@ public sealed partial class SignalViewModel : ViewModelBase
         ClearHistoryCommand.NotifyCanExecuteChanged();
     }
 
-    private void ShowError(Exception exception)
+    protected override void ShowError(Exception exception)
     {
-        _logger.Error(exception, "Signal view operation failed");
-        HasError = true;
-        IsLocationPermissionRequired = exception is WifiException { Kind: WifiErrorKind.AccessDenied };
-        ErrorMessage = exception is WifiException wifi ? WifiErrorPresenter.GetMessage(wifi) : "Не удалось выполнить операцию. Подробности сохранены в журнале.";
-        StatusText = "Операция не выполнена. История сохранена.";
+        Logger.Error(exception, "Signal view operation failed");
+        base.ShowError(exception);
     }
 
     private static string FormatRssi(int? value) => value is { } rssi ? rssi.ToString(Russian) + " dBm" : "—";

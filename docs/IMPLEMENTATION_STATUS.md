@@ -1,6 +1,6 @@
 # Состояние реализации
 
-ТЗ: `WirelessSecurityAnalyzer_Codex_TZ.docx`, `WirelessSecurityAnalyzer_Milestone2_Codex.docx`, `WirelessSecurityAnalyzer_Milestone3_Codex.docx`, `WirelessSecurityAnalyzer_Milestone4_Codex.docx`. Реализован код первых четырёх этапов поверх существующего сканера. Аппаратная проверка на Windows остаётся необходимой проверкой.
+ТЗ: `WirelessSecurityAnalyzer_Codex_TZ.docx`, `WirelessSecurityAnalyzer_Milestone2_Codex.docx`, `WirelessSecurityAnalyzer_Milestone3_Codex.docx`, `WirelessSecurityAnalyzer_Milestone4_Codex.docx`. Реализован код Milestones 1–5 поверх существующего сканера; подключение описано в WIFI_CONNECTION_REPORT.md. Аппаратная проверка на Windows остаётся необходимой проверкой.
 
 ## Первый этап — код реализован, аппаратная проверка ожидается
 
@@ -8,7 +8,7 @@
 - Core: immutable модели WifiAccessPoint и WifiAdapter, WifiBand, интерфейсы сканера/адаптеров, структурированные ошибки, преобразование частот и каналов.
 - Infrastructure.Windows: P/Invoke WLAN API, ABI-структуры, SafeHandle, освобождение native memory, callback с удержанием delegate, TaskCompletionSource, отмена и тайм-аут.
 - WindowsWifiScanner: реальные BSS, несколько адаптеров, объединение по BSSID, последовательное выполнение сканирований, локальное логирование.
-- App: Avalonia 12.1.3, MVVM на CommunityToolkit, DI, русскоязычная тёмная тема, sidebar, шесть страниц навигации, ручной scan, TableView, индикатор RSSI, поиск/фильтры/сортировка, отмена, loading/empty/error states и переход к Location settings.
+- App: Avalonia 12.1.3, MVVM на CommunityToolkit, DI, русскоязычная светлая тема Light_Interface, семь вкладок сверху, ручной scan, TableView, индикатор RSSI, поиск/фильтры/сортировка, отмена, loading/empty/error states и переход к Location settings.
 - README и профиль self-contained Windows x64.
 
 Профиль публикации собирает self-contained приложение Windows x64 с включённым .NET Runtime. Папка публикации — `publish/win-x64/`; архив для переноса — `publish/WirelessSecurityAnalyzer-win-x64.zip`.
@@ -19,7 +19,7 @@
 
 ### Новые файлы
 
-- Core/Models: `SignalSample.cs`, `SignalStatistics.cs`, `WifiScanSnapshot.cs`, `WifiMonitorSnapshot.cs`.
+- Core/Models: `SignalStatistics.cs` (также содержит `SignalSample`), `WifiScanSnapshot.cs`, `WifiMonitorSnapshot.cs`.
 - Core/Analysis: `SignalHistory.cs`, `SignalStatisticsCalculator.cs`.
 - Core/Interfaces: `IWifiMonitorService.cs`, `IWifiScanState.cs`.
 - Infrastructure.Windows/Wifi: `WifiMonitorService.cs`, `WifiScanService.cs`.
@@ -81,9 +81,8 @@ ScottPlot.Avalonia 5.1.59, API major 5. AvaPlot остаётся тем же п�
 - `Core/Analysis/Channels/ChannelAnalyzer.cs`: нормализация входных BSS, дедупликация, scores/counts/levels, стабильная рекомендация и готовая геометрия контуров.
 - `Core/Interfaces/IChannelAnalyzer.cs`, `IChannelOverlapModel.cs`, `IChannelCandidateProvider.cs`: независимые от UI договоры.
 - `Core/Models/ChannelAnalysisOptions.cs`: коэффициенты, пороги, исключаемый BSSID и необязательный список кандидатов для анализируемого диапазона.
-- `Core/Models/ChannelLoadLevel.cs`, `ChannelAnalysisResult.cs`: уровни и immutable результат одного канала.
-- `Core/Models/ChannelAnalysisSnapshot.cs`: immutable анализ; в этом же файле связанная модель `ChannelSpectrumCurve` с read-only геометрией и исходной BSS.
-- `Core/Models/WifiScanFailure.cs`: ошибка общего источника, упорядоченная вместе с успешными снимками.
+- `Core/Models/ChannelAnalysisSnapshot.cs`: уровни `ChannelLoadLevel`, immutable результат одного канала `ChannelAnalysisResult`, снимок анализа и связанная модель `ChannelSpectrumCurve` с read-only геометрией и исходной BSS.
+- `Core/Models/WifiScanSnapshot.cs`: успешный снимок и ошибка общего источника `WifiScanFailure`, упорядоченная вместе с успешными снимками.
 - `App/ViewModels/ChannelRowViewModel.cs`: русские подписи уровней, единицы и числовая оценка для таблицы.
 
 ### Изменённые существующие файлы
@@ -119,7 +118,7 @@ DirectBssCount считает нормализованный канал, Influen
 - Прежние проверки сканирования, «Эфира», мониторинга/истории/ScottPlot, навигации всех страниц и закрытия окна проходят.
 - Linux GUI: запуск приложения, рабочая страница «Каналы», empty state и обработка UnsupportedPlatform. В отдельном локальном preview проверены тестовые BSS 2,4/5/6 ГГц, переключение диапазонов, положение/высота пиков, таблица и корректное закрытие; тестовых данных в production scanner нет. Изображения остаются в локальных артефактах.
 
-Остаются аппаратные сценарии Windows: реальный scan, анализ настоящих 2,4/5/6-ГГц BSS, проверка драйверов/разрешений и отключения USB Wi-Fi адаптера. В Linux проверяется алгоритм и UI, а не работа wlanapi.dll. Реальная ширина, RF airtime/не-Wi-Fi помехи, regulatory domain и текущий подключённый BSSID не определяются. Четвёртый этап не реализован.
+Остаются аппаратные сценарии Windows: реальный scan, анализ настоящих 2,4/5/6-ГГц BSS, проверка драйверов/разрешений и отключения USB Wi-Fi адаптера. В Linux проверяется алгоритм и UI, а не работа wlanapi.dll. Реальная ширина, RF airtime/не-Wi-Fi помехи, regulatory domain на этом этапе не определялись. Текущий подключённый BSSID добавлен в Milestone 5; реализация Milestone 4 описана ниже.
 
 ## Четвёртый этап — код реализован, аппаратная проверка ожидается
 
@@ -189,9 +188,19 @@ Cache 15 минут, MAC-first/IP fallback и scope сети, controlled concurr
 
 Restore/build/test успешны; Release 0 ошибок/предупреждений; 447 passed, 0 failed, 2 Windows hardware skipped. Добавлено 114 локальных проверок, тестовые файлы остаются вне repository. GUI проверен на Linux с отдельным локальным preview; настоящий WLAN scan/6-GHz радиоэфир требуют Windows. Подробный отчёт из 15 пунктов — [AIR_CAPABILITIES_REPORT.md](AIR_CAPABILITIES_REPORT.md). Функционал включён в [Version 6 (6.0.0)](https://github.com/KirillBass/WIFI_Scanner/releases/tag/v6.0.0); релиз содержит self-contained Windows x64 архив и SHA-256.
 
+## Milestone 5 — Wi-Fi Connection
+
+Добавлены `WlanConnect` с временным XML-профилем, уведомления результата и `WlanDisconnect`; Open и WPA2-Personal AES/CCMP, известный пароль, отмена и тайм-ауты. Общая immutable Network Session отделяет association от готовности IPv4, переиспользует WindowsLocalNetworkService/SubnetCalculator. Смена SSID/адаптера/IPv4-контекста останавливает прежнее обнаружение и enrichment, сбрасывает список и identity cache, включая переход между сетями с одинаковой подсетью.
+
+Модальный диалог вызывается из «Эфира», пароль скрыт и очищается, после Ready — автоматический переход на «Сетевой аудит». Текущий статус доступен постоянно в нижней строке главного окна и в «Обзоре». Прежний светлый интерфейс с верхними вкладками сохранён. Enterprise/WPA3/transition/WPA/WEP/OWE не подключаются; отображение их характеристик сохранено. Порт-сканирование не реализовано.
+
+Исправлена проверка сетей с Pairwise TKIP+CCMP и Group TKIP: для клиента запрашивается AES/CCMP, групповой TKIP не блокирует подключение. Локально 518 passed, 0 failed, 2 Windows hardware skipped.
+
+Подробный отчёт в 13 пунктах — [WIFI_CONNECTION_REPORT.md](WIFI_CONNECTION_REPORT.md). Проверки находятся вне Git-репозитория по прежнему пожеланию пользователя. Функционал включён в [Version 7 (7.0.0)](https://github.com/KirillBass/WIFI_Scanner/releases/tag/v7.0.0); релиз содержит self-contained Windows x64 архив и SHA-256. Light_Interface остаётся предыдущим релизом.
+
 ## Оставшиеся этапы
 
 1. Аппаратная проверка четырёх реализованных этапов на Windows с Wi-Fi/Ethernet адаптером, включая настоящее обнаружение телефона/роутера и исчезновение интерфейса.
-2. Полный Dashboard, сведения о текущем подключении, итоговая UX-полировка и проверка стабильности Release на Windows.
+2. Полный Dashboard, итоговая UX-полировка и проверка стабильности Release на Windows.
 
 Discovery реализован в пределах собственной выбранной IPv4-подсети. Порт-сканер, crawler, перехват трафика, анализ контента, базы данных и cloud services не входят в текущую реализацию.

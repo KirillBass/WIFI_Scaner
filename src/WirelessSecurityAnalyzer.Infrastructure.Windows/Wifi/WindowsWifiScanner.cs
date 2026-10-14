@@ -7,10 +7,11 @@ using WirelessSecurityAnalyzer.Infrastructure.Windows.Network.Identity;
 
 namespace WirelessSecurityAnalyzer.Infrastructure.Windows.Wifi;
 
-public sealed class WindowsWifiScanner(ILogger logger, MacVendorResolver? vendorResolver = null) : IWifiScanner, IWifiAdapterService
+public sealed class WindowsWifiScanner(ILogger logger, MacVendorResolver? vendorResolver = null,
+    WifiOperationCoordinator? coordinator = null) : IWifiScanner, IWifiAdapterService
 {
     private readonly MacVendorResolver _vendorResolver = vendorResolver ?? new MacVendorResolver();
-    private readonly SemaphoreSlim _scanGate = new(1, 1);
+    private readonly SemaphoreSlim _scanGate = coordinator?.Gate ?? new(1, 1);
     private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(10);
 
     public Task<IReadOnlyList<WifiAdapter>> GetAdaptersAsync(CancellationToken cancellationToken = default) =>

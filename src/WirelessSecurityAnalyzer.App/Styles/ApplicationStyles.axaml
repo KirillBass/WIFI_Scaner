@@ -1,4 +1,15 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels">
+  <Styles.Resources>
+    <DataTemplate x:Key="WifiErrorTemplate" x:DataType="vm:WifiViewModelBase">
+      <Border Classes="card" BorderBrush="{DynamicResource ErrorBrush}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}" />
+          <Button Content="Открыть параметры местоположения" Command="{Binding OpenLocationSettingsCommand}" IsVisible="{Binding IsLocationPermissionRequired}" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </Styles.Resources>
   <Style Selector="Window">
     <Setter Property="Background" Value="{DynamicResource WindowBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />

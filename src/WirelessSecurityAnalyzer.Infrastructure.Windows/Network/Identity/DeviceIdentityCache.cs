@@ -10,6 +10,8 @@ public sealed class DeviceIdentityCache(DeviceIdentityOptions options, TimeProvi
     private readonly object _gate = new();
     private readonly Dictionary<string, Entry> _entries = [];
 
+    public void Clear() { lock (_gate) _entries.Clear(); }
+
     public bool TryGet(LocalNetworkInfo network, NetworkDevice device, out DeviceIdentity identity)
     {
         lock (_gate)

@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels"
+             x:Class="WirelessSecurityAnalyzer.App.Views.NetworkAuditView" x:DataType="vm:NetworkAuditViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="12">
+      <TextBlock Text="Сетевой аудит" Classes="title" />
+      <TextBlock Text="{Binding Session.Status}" TextWrapping="Wrap" />
+      <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+        <TextBlock Text="SSID:" /><TextBlock Grid.Column="1" Text="{Binding Session.Ssid}" TextWrapping="Wrap" />
+        <TextBlock Grid.Row="1" Text="BSSID:" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Session.Bssid}" />
+        <TextBlock Grid.Row="2" Text="Адаптер:" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Session.InterfaceName}" TextWrapping="Wrap" />
+        <TextBlock Grid.Row="3" Text="IPv4:" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Session.Ipv4}" />
+        <TextBlock Grid.Row="4" Text="Подсеть:" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Session.Subnet}" />
+        <TextBlock Grid.Row="5" Text="Шлюз:" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Session.Gateway}" />
+        <TextBlock Grid.Row="6" Text="Безопасность:" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Session.Security}" />
+        <TextBlock Grid.Row="7" Text="Подключено:" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Session.ConnectedAt}" />
+      </Grid>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Обновить устройства" Command="{Binding RefreshDevicesCommand}" />
+        <Button Content="Отключиться" Command="{Binding DisconnectCommand}" />
+      </StackPanel>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
+      <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource ErrorBrush}" />
+      <TextBlock Text="{Binding DeviceCount, StringFormat='Устройств обнаружено в текущей сессии: {0}'}" />
+      <TextBlock Text="Подробный список устройств доступен на вкладке «Устройства». Следующий этап — сканирование портов и сетевых служб." Classes="subtitle" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

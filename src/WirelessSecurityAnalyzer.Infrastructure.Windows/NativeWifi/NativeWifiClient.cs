@@ -10,7 +10,7 @@ using WirelessSecurityAnalyzer.Infrastructure.Windows.Network.Identity;
 
 namespace WirelessSecurityAnalyzer.Infrastructure.Windows.NativeWifi;
 
-internal sealed class NativeWifiClient : IDisposable
+internal sealed partial class NativeWifiClient : IDisposable
 {
     private readonly SafeWlanHandle _handle;
     private readonly NativeWifiMethods.NotificationCallback _callback;
@@ -19,6 +19,7 @@ internal sealed class NativeWifiClient : IDisposable
     private readonly MacVendorResolver _vendorResolver;
     private bool _registered;
     private bool _disposed;
+    private readonly object _registrationGate = new();
 
     internal NativeWifiClient(ILogger logger, MacVendorResolver vendorResolver)
     {
@@ -59,13 +60,7 @@ internal sealed class NativeWifiClient : IDisposable
     internal async Task<IReadOnlyList<WifiAccessPoint>> ScanAsync(WifiAdapter adapter, TimeSpan timeout, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        if (!_registered)
-        {
-            NativeWifiException.ThrowIfError(NativeWifiMethods.WlanRegisterNotification(_handle,
-                WlanConstants.NotificationSourceAcm, false, _callback, IntPtr.Zero, IntPtr.Zero, out _),
-                nameof(NativeWifiMethods.WlanRegisterNotification));
-            _registered = true;
-        }
+        RegisterNotifications();
 
         var completion = new ScanCompletion();
         if (!_pending.TryAdd(adapter.Id, completion))
@@ -158,8 +153,9 @@ internal sealed class NativeWifiClient : IDisposable
     {
         try
         {
-            if ((data.Source & WlanConstants.NotificationSourceAcm) == 0 || !_pending.TryGetValue(data.InterfaceId, out var completion))
-                return;
+            if ((data.Source & WlanConstants.NotificationSourceAcm) == 0) return;
+            OnConnectionNotification(ref data);
+            if (!_pending.TryGetValue(data.InterfaceId, out var completion)) return;
             if (data.Code == WlanConstants.ScanComplete) completion.Complete();
             else if (data.Code == WlanConstants.ScanFail)
             {
@@ -172,6 +168,18 @@ internal sealed class NativeWifiClient : IDisposable
             // Never allow a managed exception to cross the unmanaged callback boundary.
             _logger.Error(exception, "WLAN notification callback failed");
             if (_pending.TryGetValue(data.InterfaceId, out var completion)) completion.Fail(exception);
+        }
+    }
+
+    private void RegisterNotifications()
+    {
+        lock (_registrationGate)
+        {
+            if (_registered) return;
+            NativeWifiException.ThrowIfError(NativeWifiMethods.WlanRegisterNotification(_handle,
+                WlanConstants.NotificationSourceAcm, false, _callback, IntPtr.Zero, IntPtr.Zero, out _),
+                nameof(NativeWifiMethods.WlanRegisterNotification));
+            _registered = true;
         }
     }
 

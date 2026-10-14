@@ -11,4 +11,5 @@ public interface IDeviceMonitorService
     Task StartAsync(LocalNetworkInfo network, DeviceDiscoveryOptions options, TimeSpan? interval = null,
         CancellationToken cancellationToken = default);
     Task StopAsync();
+    Task ResetAsync() => StopAsync();
 }

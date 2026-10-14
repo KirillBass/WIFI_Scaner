@@ -22,5 +22,6 @@
     <DataTemplate DataType="vm:SignalViewModel"><views:SignalView /></DataTemplate>
     <DataTemplate DataType="vm:DevicesViewModel"><views:DevicesView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+    <DataTemplate DataType="vm:NetworkAuditViewModel"><views:NetworkAuditView /></DataTemplate>
   </Application.DataTemplates>
 </Application>

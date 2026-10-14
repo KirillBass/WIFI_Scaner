@@ -35,7 +35,8 @@ internal static class BssMapper
             Vendor = vendor?.Vendor, IsVendorLocallyAdministered = vendor?.IsPrivateMac ?? false,
             Standard = WifiStandardDetector.Detect(NativeStandard(entry.PhyType, band), capabilities),
             Security = WifiSecurityDetector.Detect(capabilities, privacy, windowsWep, informationElementsAvailable),
-            IsSecurityEnabled = privacy || capabilities.HasRsn || capabilities.HasWpa
+            IsSecurityEnabled = privacy || capabilities.HasRsn || capabilities.HasWpa,
+            SsidBytes = Array.AsReadOnly(bytes.ToArray())
         };
     }
 

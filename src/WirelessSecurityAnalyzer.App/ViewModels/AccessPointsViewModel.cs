@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -6,29 +7,34 @@ using Serilog;
 using WirelessSecurityAnalyzer.Core.Common;
 using WirelessSecurityAnalyzer.Core.Interfaces;
 using WirelessSecurityAnalyzer.Core.Models;
+using WirelessSecurityAnalyzer.Core.Network;
 
 namespace WirelessSecurityAnalyzer.App.ViewModels;
 
-public sealed partial class AccessPointsViewModel : ViewModelBase
+public sealed partial class AccessPointsViewModel : WifiViewModelBase
 {
     private readonly IWifiScanner _scanner;
     private readonly IWifiAdapterService _adapterService;
-    private readonly ISystemSettingsService _settings;
-    private readonly ILogger _logger;
     private readonly IWifiScanState _scanState;
     private readonly Dictionary<string, AccessPointRowViewModel> _rows = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _lifetime = new();
     private long _snapshotVersion;
     private bool _stopped;
+    private readonly IWifiConnectionService? _connections;
+    public NetworkSessionViewModel? Session { get; }
+    public event Action<WifiConnectionDialogViewModel>? ConnectionRequested;
 
     public AccessPointsViewModel(IWifiScanner scanner, IWifiAdapterService adapterService,
-        ISystemSettingsService settings, ILogger logger, IWifiScanState scanState)
+        ISystemSettingsService settings, ILogger logger, IWifiScanState scanState,
+        IWifiConnectionService? connections = null, NetworkSessionViewModel? session = null) : base(settings, logger)
     {
         _scanner = scanner;
         _adapterService = adapterService;
-        _settings = settings;
-        _logger = logger;
+        StatusText = "Нажмите «Сканировать», чтобы получить реальные данные Wi-Fi.";
         _scanState = scanState;
+        _connections = connections;
+        Session = session;
+        if (Session is not null) Session.PropertyChanged += OnSessionChanged;
         _scanState.Updated += OnScanUpdated;
         if (_scanState.Current is { } snapshot) ApplySnapshot(snapshot);
     }
@@ -46,18 +52,39 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
     [ObservableProperty] private AccessPointRowViewModel? _selectedAccessPoint;
     [ObservableProperty] private int _selectedBandIndex;
     [ObservableProperty] private bool _strongestFirst = true;
-    [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private string _statusText = "Нажмите «Сканировать», чтобы получить реальные данные Wi-Fi.";
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ConnectCommand))] private bool _isBusy;
     [ObservableProperty] private string _adapterText = "Проверка Wi-Fi адаптеров…";
-    [ObservableProperty] private string _errorMessage = string.Empty;
-    [ObservableProperty] private bool _hasError;
-    [ObservableProperty] private bool _isLocationPermissionRequired;
     [ObservableProperty] private string _lastScanText = "Сканирование ещё не выполнялось";
 
+    protected override string UnexpectedErrorMessage => "Не удалось выполнить операцию. Подробности сохранены в локальном журнале.";
+    protected override string FailureStatus => "Операция не выполнена. Последние результаты сохранены.";
+
     partial void OnSearchTextChanged(string value) => ApplyFilter();
-    partial void OnSelectedAccessPointChanged(AccessPointRowViewModel? value) => OnPropertyChanged(nameof(HasSelectedAccessPoint));
+    partial void OnSelectedAccessPointChanged(AccessPointRowViewModel? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedAccessPoint));
+        OnPropertyChanged(nameof(ConnectionHint));
+        ConnectCommand.NotifyCanExecuteChanged();
+    }
     partial void OnSelectedBandIndexChanged(int value) => ApplyFilter();
     partial void OnStrongestFirstChanged(bool value) => ApplyFilter();
+
+    public string ConnectionHint => SelectedAccessPoint is not { } row ? "Выберите сеть для подключения." :
+        row.AccessPoint.IsHidden || string.IsNullOrEmpty(row.AccessPoint.Ssid) ? "Подключение к скрытой сети без известного SSID не поддерживается." :
+        !WifiConnectionPolicy.IsSupported(row.AccessPoint.Security) ? WifiConnectionPolicy.UnsupportedMessage(row.AccessPoint.Security) :
+        row.AccessPoint.Security.GroupCipher == WifiCipherType.Tkip
+            ? "Для подключения будет запрошен AES/CCMP; групповой шифр сети — TKIP. Windows выбирает точку данного SSID."
+            : "Подключение выполняется к SSID; Windows выбирает подходящую точку доступа.";
+    private bool CanConnect() => !_stopped && !IsBusy && _connections is not null && Session is { IsConnecting: false } &&
+        SelectedAccessPoint is { AccessPoint.IsHidden: false } row && row.AccessPoint.Ssid.Length > 0 && WifiConnectionPolicy.IsSupported(row.AccessPoint.Security);
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private void Connect()
+    {
+        if (SelectedAccessPoint is { } row && _connections is not null && Session is not null)
+            ConnectionRequested?.Invoke(new(row.AccessPoint, _adapterService, _connections, Session));
+    }
+    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
+    { if (e.PropertyName == nameof(NetworkSessionViewModel.Current)) ConnectCommand.NotifyCanExecuteChanged(); }
 
     public async Task InitializeAsync()
     {
@@ -74,7 +101,7 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception exception)
         {
-            _logger.Error(exception, "Adapter detection failed");
+            Logger.Error(exception, "Adapter detection failed");
             await Dispatcher.UIThread.InvokeAsync(() => { AdapterText = "Адаптер недоступен"; ShowError(exception); });
         }
     }
@@ -84,9 +111,7 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         IsBusy = true;
-        HasError = false;
-        IsLocationPermissionRequired = false;
-        ErrorMessage = string.Empty;
+        SetError(null);
         StatusText = "Сканирование эфира…";
         try
         {
@@ -102,21 +127,10 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
         }
         catch (Exception exception)
         {
-            _logger.Error(exception, "Wi-Fi scan failed");
+            Logger.Error(exception, "Wi-Fi scan failed");
             await Dispatcher.UIThread.InvokeAsync(() => ShowError(exception));
         }
         finally { await Dispatcher.UIThread.InvokeAsync(() => IsBusy = false); }
-    }
-
-    [RelayCommand]
-    private void OpenLocationSettings()
-    {
-        try { _settings.OpenLocationSettings(); }
-        catch (Exception exception)
-        {
-            _logger.Error(exception, "Opening location settings failed");
-            ShowError(exception);
-        }
     }
 
     public void Stop()
@@ -124,6 +138,7 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
         if (_stopped) return;
         _stopped = true;
         _scanState.Updated -= OnScanUpdated;
+        if (Session is not null) Session.PropertyChanged -= OnSessionChanged;
         _lifetime.Cancel();
         ScanCommand.Cancel();
     }
@@ -153,20 +168,9 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
         OnPropertyChanged(nameof(Ghz24Count));
         OnPropertyChanged(nameof(Ghz5Count));
         OnPropertyChanged(nameof(Ghz6Count));
-        HasError = false;
-        IsLocationPermissionRequired = false;
-        ErrorMessage = string.Empty;
+        SetError(null);
         LastScanText = $"Последнее сканирование: {snapshot.CompletedAt.ToLocalTime():HH:mm:ss}";
         StatusText = TotalCount == 0 ? "Сканирование завершено. Точки доступа не обнаружены." : $"Обнаружено BSS: {TotalCount}";
-    }
-
-    private void ShowError(Exception exception)
-    {
-        HasError = true;
-        IsLocationPermissionRequired = exception is WifiException { Kind: WifiErrorKind.AccessDenied };
-        ErrorMessage = exception is WifiException wifi ? WifiErrorPresenter.GetMessage(wifi) :
-            "Не удалось выполнить операцию. Подробности сохранены в локальном журнале.";
-        StatusText = "Операция не выполнена. Последние результаты сохранены.";
     }
 
     private void ApplyFilter()
@@ -177,17 +181,8 @@ public sealed partial class AccessPointsViewModel : ViewModelBase
             (query.Length == 0 || r.Ssid.Contains(query, StringComparison.OrdinalIgnoreCase) || r.Bssid.Contains(query, StringComparison.OrdinalIgnoreCase)));
         var target = (StrongestFirst ? filtered.OrderByDescending(r => r.RssiDbm) : filtered.OrderBy(r => r.RssiDbm))
             .ThenBy(r => r.Bssid).ToArray();
-        var visible = target.ToHashSet();
-        if (SelectedAccessPoint is not null && !visible.Contains(SelectedAccessPoint)) SelectedAccessPoint = null;
-        for (var i = AccessPoints.Count - 1; i >= 0; i--)
-            if (!visible.Contains(AccessPoints[i])) AccessPoints.RemoveAt(i);
-        for (var i = 0; i < target.Length; i++)
-        {
-            if (i < AccessPoints.Count && ReferenceEquals(AccessPoints[i], target[i])) continue;
-            var oldIndex = AccessPoints.IndexOf(target[i]);
-            if (oldIndex >= 0) AccessPoints.Move(oldIndex, i);
-            else AccessPoints.Insert(i, target[i]);
-        }
+        if (SelectedAccessPoint is not null && !target.Contains(SelectedAccessPoint)) SelectedAccessPoint = null;
+        SynchronizeRows(AccessPoints, target);
         OnPropertyChanged(nameof(IsEmpty));
     }
 

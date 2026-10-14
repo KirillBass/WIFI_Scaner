@@ -1,4 +1,5 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<controls:PlotViewBase xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:WirelessSecurityAnalyzer.App.Controls"
              xmlns:vm="using:WirelessSecurityAnalyzer.App.ViewModels"
              xmlns:plot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
              x:Class="WirelessSecurityAnalyzer.App.Views.ChannelsView" x:DataType="vm:ChannelsViewModel">
@@ -15,12 +16,7 @@
         <Button Grid.Column="3" Content="Отмена" Command="{Binding RefreshAnalysisCancelCommand}" IsVisible="{Binding IsBusy}" />
       </Grid>
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
-      <Border Classes="card" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource ErrorBrush}" Padding="12">
-        <StackPanel Spacing="8">
-          <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" />
-          <Button Content="Открыть параметры местоположения" Command="{Binding OpenLocationSettingsCommand}" IsVisible="{Binding IsLocationPermissionRequired}" />
-        </StackPanel>
-      </Border>
+      <ContentControl Content="{Binding}" ContentTemplate="{StaticResource WifiErrorTemplate}" IsVisible="{Binding HasError}" />
       <WrapPanel>
         <TextBlock Text="{Binding SnapshotText}" Classes="subtitle" Margin="0,0,20,4" />
         <TextBlock Text="{Binding BssCount, StringFormat='BSS в диапазоне: {0}'}" Classes="subtitle" Margin="0,0,20,4" />
@@ -69,4 +65,4 @@
       <TextBlock Text="{Binding DataNotesText}" Classes="subtitle" IsVisible="{Binding HasDataNotes}" FontSize="12" />
     </StackPanel>
   </ScrollViewer>
-</UserControl>
+</controls:PlotViewBase>

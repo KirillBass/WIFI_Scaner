@@ -1,85 +1,43 @@
-using System.ComponentModel;
 using System.Globalization;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Threading;
+using WirelessSecurityAnalyzer.App.Controls;
 using WirelessSecurityAnalyzer.App.ViewModels;
 using WirelessSecurityAnalyzer.Core.Models;
 
 namespace WirelessSecurityAnalyzer.App.Views;
 
-public partial class ChannelsView : UserControl
+public partial class ChannelsView : PlotViewBase
 {
     private const string HoverHint = "Наведите курсор на кривую, чтобы увидеть SSID, BSSID, канал и RSSI.";
-    private ChannelsViewModel? _viewModel;
     private ChannelAnalysisSnapshot? _renderedAnalysis;
     private readonly List<(ScottPlot.Plottables.Scatter Series, ChannelSpectrumCurve Curve)> _series = [];
-    private bool _attached, _updateQueued, _hasRendered;
+    private bool _hasRendered;
 
     public ChannelsView()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => { if (_attached) BindViewModel(); };
         ChannelPlot.PointerMoved += OnPlotPointerMoved;
         ChannelPlot.PointerExited += (_, _) => ResetHover();
     }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override ScottPlot.Avalonia.AvaPlot Chart => ChannelPlot;
+    protected override string DataProperty => nameof(ChannelsViewModel.Analysis);
+
+    protected override void ConfigureAxes()
     {
-        base.OnAttachedToVisualTree(e);
-        _attached = true;
         var plot = ChannelPlot.Plot;
-        plot.FigureBackground.Color = ThemeColor("CardBrush");
-        plot.DataBackground.Color = ThemeColor("WindowBrush");
-        plot.Axes.Color(ThemeColor("TextBrush"));
-        plot.Grid.MajorLineColor = ThemeColor("BorderBrush");
         plot.XLabel("Центральная частота, МГц");
-        plot.YLabel("RSSI, dBm");
         plot.HideLegend();
         plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericAutomatic
         {
             LabelFormatter = frequency => frequency.ToString("0.#", CultureInfo.GetCultureInfo("ru-RU"))
         };
-        BindViewModel();
     }
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void UpdatePlot()
     {
-        _attached = false;
-        if (_viewModel is not null) _viewModel.PropertyChanged -= OnViewModelChanged;
-        _viewModel = null;
-        base.OnDetachedFromVisualTree(e);
-    }
-
-    private void BindViewModel()
-    {
-        if (_viewModel is not null) _viewModel.PropertyChanged -= OnViewModelChanged;
-        _viewModel = DataContext as ChannelsViewModel;
-        if (_viewModel is not null) _viewModel.PropertyChanged += OnViewModelChanged;
-        QueuePlotUpdate();
-    }
-
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(ChannelsViewModel.Analysis) or null or "") QueuePlotUpdate();
-    }
-
-    private void QueuePlotUpdate()
-    {
-        if (_updateQueued || !_attached) return;
-        _updateQueued = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _updateQueued = false;
-            if (_attached) UpdatePlot();
-        }, DispatcherPriority.Background);
-    }
-
-    private void UpdatePlot()
-    {
-        var analysis = _viewModel?.Analysis;
+        var analysis = (DataContext as ChannelsViewModel)?.Analysis;
         if (_hasRendered && ReferenceEquals(analysis, _renderedAnalysis)) return;
         _hasRendered = true;
         _renderedAnalysis = analysis;
@@ -122,7 +80,7 @@ public partial class ChannelsView : UserControl
 
     private void OnPlotPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_attached || _series.Count == 0) return;
+        if (!IsAttached || _series.Count == 0) return;
         var position = e.GetPosition(ChannelPlot);
         var scale = ChannelPlot.DisplayScale;
         var pixel = new ScottPlot.Pixel((float)(position.X * scale), (float)(position.Y * scale));
@@ -157,12 +115,5 @@ public partial class ChannelsView : UserControl
         var ap = curve.AccessPoint;
         var ssid = ap.IsHidden || string.IsNullOrEmpty(ap.Ssid) ? "Скрытая сеть" : ap.Ssid;
         return $"{ssid} · {ap.Bssid} · канал {ap.Channel} · {ap.FrequencyMhz:0.#} МГц · {ap.RssiDbm} dBm";
-    }
-
-    private ScottPlot.Color ThemeColor(string key)
-    {
-        var brush = this.FindResource(key) as SolidColorBrush
-            ?? throw new InvalidOperationException($"Missing theme brush: {key}");
-        return ScottPlot.Color.FromHex($"#{brush.Color.R:X2}{brush.Color.G:X2}{brush.Color.B:X2}");
     }
 }

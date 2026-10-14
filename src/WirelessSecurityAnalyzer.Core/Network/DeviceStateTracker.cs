@@ -9,6 +9,8 @@ public sealed class DeviceStateTracker
     private readonly List<TrackedDevice> _devices = [];
     private LocalNetworkInfo? _network;
 
+    public void Clear() { _devices.Clear(); _network = null; }
+
     public void SetContext(LocalNetworkInfo network)
     {
         if (_network is null || !_network.HasSameContext(network)) _devices.Clear();

@@ -134,13 +134,31 @@ public sealed class DeviceMonitorService(IDeviceDiscoveryService discovery, ILog
         await _lifecycle.WaitAsync().ConfigureAwait(false);
         try
         {
-            _cancellation?.Cancel();
-            await _worker.ConfigureAwait(false);
-            await StopIdentityAsync().ConfigureAwait(false);
-            _cancellation?.Dispose();
-            _cancellation = null;
+            await StopWorkerAsync().ConfigureAwait(false);
         }
         finally { _lifecycle.Release(); }
+    }
+
+    public async Task ResetAsync()
+    {
+        await _lifecycle.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await StopWorkerAsync().ConfigureAwait(false);
+            lock (_dataGate) _tracker.Clear();
+            Change(s => new(s.Version, null, Array.AsReadOnly(Array.Empty<NetworkDevice>()), false, false,
+                s.Interval, null, null, null, null));
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private async Task StopWorkerAsync()
+    {
+        _cancellation?.Cancel();
+        await _worker.ConfigureAwait(false);
+        await StopIdentityAsync().ConfigureAwait(false);
+        _cancellation?.Dispose();
+        _cancellation = null;
     }
 
     private void BeginIdentity(LocalNetworkInfo network, CancellationToken token)

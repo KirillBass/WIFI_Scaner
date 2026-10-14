@@ -27,6 +27,13 @@ public partial class App : Application
         {
             var services = new ServiceCollection();
             services.AddSingleton<ILogger>(Log.Logger);
+            services.AddSingleton<WifiOperationCoordinator>();
+            services.AddSingleton<INetworkSessionService, NetworkSessionService>();
+            services.AddSingleton<NetworkSessionViewModel>();
+            services.AddSingleton<WifiProfileBuilder>();
+            services.AddSingleton(new WifiConnectionOptions());
+            services.AddSingleton<IWifiConnectionBackend, NativeWifiConnectionBackend>();
+            services.AddSingleton<IWifiConnectionService, WindowsWifiConnectionService>();
             services.AddSingleton<WindowsWifiScanner>();
             services.AddSingleton<WifiScanService>(p => new WifiScanService(p.GetRequiredService<WindowsWifiScanner>(), Log.Logger));
             services.AddSingleton<IWifiScanner>(p => p.GetRequiredService<WifiScanService>());
@@ -64,6 +71,7 @@ public partial class App : Application
             services.AddSingleton<DevicesViewModel>();
             services.AddSingleton<SettingsViewModel>();
             services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<NetworkAuditViewModel>();
             _services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
             var viewModel = _services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow { DataContext = viewModel };
